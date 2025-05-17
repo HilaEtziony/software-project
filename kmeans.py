@@ -69,7 +69,6 @@ def main():
                 for index in range(d):
                     centroids[c][index] = sum_vectors_assign[c][index]/count_assign_vectors[c]
         
-
         # Check if all centroids change less than epsilon in compare to there previous value.
         flag = True
         for i in range(k):
