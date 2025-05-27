@@ -15,15 +15,6 @@ struct vector {
     struct cord *cords;
 };
 
-/* Calculation dimensions of the vector
-int count_dims(struct cord *cords) {
-    int count = 0;
-    while (cords) {
-        count++;
-        cords = cords->next;
-    }
-    return count;
-}*/
 
 // Copying a vector to another vector
 struct cord* copy_cords(struct cord *source) {
@@ -160,11 +151,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /* Initialize d
-    int d;
-    d = count_dims(head_vec->cords); */
 
-    // Initialized centroids as first k vectors.
+    // Initialized centroids as first k vectors
     struct vector *vec_iter = head_vec;
     struct cord **centroids = malloc(k * sizeof(struct cord *));
     for (i = 0; i < k; i++) {
