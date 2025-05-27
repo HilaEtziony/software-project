@@ -84,7 +84,7 @@ void free_cords(struct cord *head) {
         free(temp);
     }
 }
-// Clearing memory starting from any vector head
+// Clearing memory starting from any vector head.
 void free_vectors(struct vector *head) {
     struct vector *temp;
     while (head) {
