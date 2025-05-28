@@ -148,26 +148,31 @@ int main(int argc, char **argv) {
             curr_vec->next = malloc(sizeof(struct vector));
             curr_vec = curr_vec->next;
             curr_vec->next = NULL;
-
+            curr_vec->cords = NULL;
             head_cord = malloc(sizeof(struct cord));
             curr_cord = head_cord;
             curr_cord->next = NULL;
+            curr_cord->value = 0.0;
             n++;
+            continue;
         } else {
             curr_cord->next = malloc(sizeof(struct cord));
             curr_cord = curr_cord->next;
             curr_cord->next = NULL;
+            curr_cord->value = 0.0;
         }
-    }
+    }       
 
     if (k >= n) {
         printf("Incorrect number of clusters!\n");
+        free_vectors(head_vec);
+        free(head_cord);
         return 1;
     }
 
     /* Initialize centroids with first k vectors */
     vec_iter = head_vec;
-    centroids = malloc(k * sizeof(struct cord *));
+    centroids = calloc(k, sizeof(struct cord *));
     for (i = 0; i < k; i++) {
         centroids[i] = copy_cords(vec_iter->cords);
         vec_iter = vec_iter->next;
@@ -176,10 +181,9 @@ int main(int argc, char **argv) {
     /* Main K-Means loop */
     for (count_iter = 0; count_iter < iter; count_iter++) {
         counts = calloc(k, sizeof(int));
-        sums = malloc(k * sizeof(struct cord *));
+        sums = calloc(k, sizeof(struct cord *));
         for (i = 0; i < k; i++) {
             struct cord *curr, *ref;
-
             sums[i] = calloc(1, sizeof(struct cord));
             curr = sums[i];
             ref = centroids[i];
@@ -239,6 +243,7 @@ int main(int argc, char **argv) {
 
     free(centroids);
     free_vectors(head_vec);
+    free(head_cord);
 
     return 0;
 }
