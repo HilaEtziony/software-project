@@ -2,20 +2,26 @@ import sys
 import copy
 import math
 
+def is_integer_string(s):
+    try:
+        return float(s).is_integer()
+    except ValueError:
+        return False
+
 def main():
     # Initialize
     epsilon = 0.001
 
     # Process data from given file to 2 dimensions's list
     lines = sys.stdin.readlines()
-    vectors = [list(map(float, line.strip().split(','))) for line in lines]
+    vectors = [list(map(float, line.strip().split(','))) for line in lines if line.strip()]
     d = len(vectors[0])
     n = len(vectors)
 
     # Check k is valid
     arg1 = sys.argv[1]
-    if (arg1.isdigit() and 1 < int(arg1) and int(arg1) < n):
-        k = int(arg1)
+    if (is_integer_string(arg1) and 1 < int(float(arg1)) and int(float(arg1)) < n):
+        k = int(float(arg1))
     else:
         print("Incorrect number of clusters!")
         sys.exit(1)
@@ -25,8 +31,8 @@ def main():
         iter = 400
     elif (len(sys.argv) == 3): 
         arg2 = sys.argv[2]
-        if (arg2.isdigit() and 1 < int(arg2) and int(arg2) < 1000):
-            iter = int(arg2)
+        if (is_integer_string(arg2) and 1 < int(float(arg2)) and int(float(arg2)) < 1000):
+            iter = int(float(arg2))
         else:
             print("Incorrect maximum iteration!")
             sys.exit(1)
