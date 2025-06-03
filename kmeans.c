@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <math.h>
-#include <ctype.h>  
 
 #ifndef INFINITY
 #define INFINITY (1.0/0.0)
@@ -33,9 +31,10 @@ int is_positive_integer(const char *str) {
             }
             return 1;
 
-        } else if (!isdigit(*str)) {
-            return 0; 
-        }
+        } else if (*str < '0' || *str > '9') {
+        return 0;
+    }
+
         str++;
     }
 
