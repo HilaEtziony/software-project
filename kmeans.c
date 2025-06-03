@@ -198,7 +198,7 @@ int main(int argc, char **argv) {
         printf("Incorrect number of clusters!\n");
         free_vectors(head_vec);
         free(head_cord);
-        return 1;
+        exit(1);
     }
 
     /* Initialize centroids with first k vectors */
