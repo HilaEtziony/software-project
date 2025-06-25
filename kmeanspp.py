@@ -3,6 +3,7 @@ import copy
 import math
 import pandas as pd
 import numpy as np
+import mykmeanssp
 ############# TODO - change kkk to the module name - photo in chat"
 #import kkk as kmean_algo
 ############# TODO - change kkk to the module name - photo in chat"
@@ -115,9 +116,9 @@ def main():
         centroids_index.append(sample[0])
 
     ############# TODO - change kkk to the module name - photo in chat"
-    #centroids = kmean_algo.fit(k, iter, epsilon, [arr.tolist() for arr in centroids], vectors.tolist())
+    #centroids = mykmeanssp.fit(iter, epsilon, [arr.tolist() for arr in centroids], vectors.tolist())
     ############# TODO - change kkk to the module name - photo in chat"
-
+    
     ########### kmeans algo - TODO - replace to fit calling ###################
     # The k-means algorithm.
     for count_iter in range(iter):

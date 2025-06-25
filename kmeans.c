@@ -1,45 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "kmeans.h"
 #include <math.h>
 
 #ifndef INFINITY
 #define INFINITY (1.0/0.0)
 #endif
 
-#define EPSILON 0.001
-
-struct cord {
-    double value;
-    struct cord *next;
-};
-
-struct vector {
-    struct vector *next;
-    struct cord *cords;
-};
-
-/* Checking whether the number is natural*/
-int is_positive_integer(const char *str) {
-    if (*str == '\0') return 0;  
-
-    while (*str) {
-        if (*str == '.') {
-            str++;
-            while (*str) {
-                if (*str != '0') return 0;  
-                str++;
-            }
-            return 1;
-
-        } else if (*str < '0' || *str > '9') {
-        return 0;
-    }
-
-        str++;
-    }
-
-    return 1;
-}
 
 /* Copying a linked list of coordinates */
 struct cord* copy_cords(struct cord *source) {
@@ -47,6 +14,8 @@ struct cord* copy_cords(struct cord *source) {
     if (!source) return NULL;
 
     head = malloc(sizeof(struct cord));
+    if (!head) return NULL;
+    
     curr = head;
     curr->value = source->value;
     source = source->next;
@@ -90,15 +59,6 @@ double delta_between_vectors(struct cord *a, struct cord *b) {
     return sqrt(sum);
 }
 
-/* Print a vector */
-void print_vector(struct cord *cords) {
-    while (cords) {
-        printf("%.4f", cords->value);
-        if (cords->next) printf(",");
-        cords = cords->next;
-    }
-    printf("\n");
-}
 
 /* Free a list of cords */
 void free_cords(struct cord *head) {
@@ -120,94 +80,15 @@ void free_vectors(struct vector *head) {
         free(temp);
     }
 }
-
-int main(int argc, char **argv) {
-    int k, iter = 400;
-    int i, n = 0, count_iter, stop;
+/* The main KMeans algorithm logic */
+void kmeans_fit(int k, int iter, double epsilon, struct cord** centroids, struct vector* head_vec) {
+    int i, count_iter, stop;
     int *counts;
     int min_index;
-    double val, min_dist, delta;
-    char ch;
+    double min_dist, delta;
 
-    struct vector *head_vec, *curr_vec, *vec_iter;
-    struct cord *head_cord, *curr_cord;
-    struct cord **centroids;
+    struct vector *vec_iter;
     struct cord **sums;
-
-    /* Input arguments check */
-    if (argc != 2 && argc != 3) {
-        printf("An Error Has Occurred\n");
-        exit(1);
-    }
-
-    k = atoi(argv[1]);
-    if (k <= 1) {
-        printf("Incorrect number of clusters!\n");
-        exit(1);
-    }
-       /* Checking whether k is a natural number*/
-    if (!is_positive_integer(argv[1])) {
-        printf("Incorrect number of clusters!\n");
-        exit(1);
-    }
-    /* Checking whether iter is a natural number*/
-    if (argc == 3) {
-        iter = atoi(argv[2]);
-        if (iter <= 1 || iter >= 1000) {
-            printf("Incorrect maximum iteration!\n");
-            exit(1);
-        }
-        if (!is_positive_integer(argv[2])) {
-            printf("Incorrect maximum iteration!\n");
-            exit(1);
-        }
-    }
-
-    /* Reading vectors from input */
-    head_vec = malloc(sizeof(struct vector));
-    curr_vec = head_vec;
-    curr_vec->next = NULL;
-
-    head_cord = malloc(sizeof(struct cord));
-    curr_cord = head_cord;
-    curr_cord->next = NULL;
-
-    while (scanf("%lf%c", &val, &ch) == 2) {
-        curr_cord->value = val;
-        if (ch == '\n') {
-            curr_vec->cords = head_cord;
-            curr_vec->next = malloc(sizeof(struct vector));
-            curr_vec = curr_vec->next;
-            curr_vec->next = NULL;
-            curr_vec->cords = NULL;
-            head_cord = malloc(sizeof(struct cord));
-            curr_cord = head_cord;
-            curr_cord->next = NULL;
-            curr_cord->value = 0.0;
-            n++;
-            continue;
-        } else {
-            curr_cord->next = malloc(sizeof(struct cord));
-            curr_cord = curr_cord->next;
-            curr_cord->next = NULL;
-            curr_cord->value = 0.0;
-        }
-    }       
-
-    if (k >= n) {
-        printf("Incorrect number of clusters!\n");
-        free_vectors(head_vec);
-        free(head_cord);
-        exit(1);
-    }
-
-    /* Initialize centroids with first k vectors */
-    vec_iter = head_vec;
-    centroids = calloc(k, sizeof(struct cord *));
-    for (i = 0; i < k; i++) {
-        centroids[i] = copy_cords(vec_iter->cords);
-        vec_iter = vec_iter->next;
-    }
 
     /* Main K-Means loop */
     for (count_iter = 0; count_iter < iter; count_iter++) {
@@ -251,7 +132,7 @@ int main(int argc, char **argv) {
                 divide_vector(sums[i], counts[i]);
 
             delta = delta_between_vectors(centroids[i], sums[i]);
-            if (delta >= EPSILON)
+            if (delta >= epsilon)
                 stop = 0;
 
             free_cords(centroids[i]);
@@ -265,16 +146,4 @@ int main(int argc, char **argv) {
         if (stop)
             break;
     }
-
-    /* Output centroids */
-    for (i = 0; i < k; i++) {
-        print_vector(centroids[i]);
-        free_cords(centroids[i]);
-    }
-
-    free(centroids);
-    free_vectors(head_vec);
-    free(head_cord);
-
-    return 0;
 }
