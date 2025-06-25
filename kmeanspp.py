@@ -3,7 +3,7 @@ import copy
 import math
 import pandas as pd
 import numpy as np
-import mykmeanssp
+import mykmeanspp
 
 def is_integer_string(s):
     try:
@@ -108,7 +108,7 @@ def main():
         centroids.append(copy.deepcopy(vectors[sample[0]]))
         centroids_index.append(sample[0])
 
-    centroids = mykmeanssp.fit(iter, epsilon, [arr.tolist() for arr in centroids], vectors.tolist())
+    centroids = mykmeanspp.fit(iter, epsilon, [arr.tolist() for arr in centroids], vectors.tolist())
   
     # Print the centroids' original index.
     for j in range(k):
