@@ -4,9 +4,6 @@ import math
 import pandas as pd
 import numpy as np
 import mykmeanssp
-############# TODO - change kkk to the module name - photo in chat"
-#import kkk as kmean_algo
-############# TODO - change kkk to the module name - photo in chat"
 
 def is_integer_string(s):
     try:
@@ -81,10 +78,6 @@ def main():
         print("Invalid epsilon!")
         sys.exit(1)
 
-    ########### copy for the kmeans algo - TODO - delete this after I add the calling to kmeans in C ###################
-    vectors_for_algo = copy.deepcopy(vectors)
-    ########### copy for the kmeans algo - TODO - delete this after I add the calling to kmeans in C ###################
-    
     # choose first centroid
     np.random.seed(1234)
     random_index = np.random.randint(1, len(vectors)) - 1
@@ -115,57 +108,8 @@ def main():
         centroids.append(copy.deepcopy(vectors[sample[0]]))
         centroids_index.append(sample[0])
 
-    ############# TODO - change kkk to the module name - photo in chat"
-    #centroids = mykmeanssp.fit(iter, epsilon, [arr.tolist() for arr in centroids], vectors.tolist())
-    ############# TODO - change kkk to the module name - photo in chat"
-    
-    ########### kmeans algo - TODO - replace to fit calling ###################
-    # The k-means algorithm.
-    for count_iter in range(iter):
-        count_assign_vectors = [0 for _ in range(k)]
-        sum_vectors_assign = [[0 for _ in range(d)] for _ in range(k)]
-
-        # Find for every vector the closest cetreoids.
-        for i in range(n):
-            min_delta = float('inf')
-            min_center = 0
-            for center_num in range(k):
-                s = 0
-                for j in range(d):
-                    delta_j = (vectors_for_algo[i][j]-centroids[center_num][j])**2
-                    s += delta_j
-                delta = math.sqrt(s)
-                if delta < min_delta:
-                    min_delta = delta
-                    min_center = center_num
-            
-            for index in range(d):
-                sum_vectors_assign[min_center][index] += vectors_for_algo[i][index]
-            count_assign_vectors[min_center] += 1
-
-        # Calculate the new cetreoids.
-        prev_centroids = copy.deepcopy(centroids)
-        for c in range(k):
-            if (count_assign_vectors[c] != 0):
-                for index in range(d):
-                    centroids[c][index] = sum_vectors_assign[c][index]/count_assign_vectors[c]
-        
-        # Check if all centroids change less than epsilon in compare to there previous value.
-        flag = True
-        for i in range(k):
-            s = 0
-            for j in range(d):
-                delta_j = (centroids[i][j]-prev_centroids[i][j])**2
-                s += delta_j
-            delta = math.sqrt(s)
-            if delta >= epsilon:
-                flag = False
-        if flag == True:
-            break
-    ########### kmeans algo - TODO - replace to fit calling ###################
-
-
-    ########### print results - TODO - replace to print data from C kmeans results ###################
+    centroids = mykmeanssp.fit(iter, epsilon, [arr.tolist() for arr in centroids], vectors.tolist())
+  
     # Print the centroids' original index.
     for j in range(k):
         if j==(k-1):
@@ -180,7 +124,6 @@ def main():
                 print("{:.4f}".format(centroids[i][j]))
             else:
                 print("{:.4f}".format(centroids[i][j])+",", end='')
-    ########### print results - TODO - replace to print data from C kmeans results ###################
 
 
 main()
