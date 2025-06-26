@@ -146,7 +146,7 @@ accepted for this function */
 
 static struct PyModuleDef kmeansmodule = {
     PyModuleDef_HEAD_INIT,
-    "mykmeanspp", /* name of module */
+    "mykmeanssp", /* name of module */
     NULL,
     -1,
     kmeansMethods /* the PyMethodDef array from before 
@@ -155,7 +155,7 @@ static struct PyModuleDef kmeansmodule = {
 
 /* 5. === Module Initialization === */
 
-PyMODINIT_FUNC PyInit_mykmeanspp(void) {
+PyMODINIT_FUNC PyInit_mykmeanssp(void) {
     PyObject *m;
     m = PyModule_Create(&kmeansmodule);
     if (!m) {
