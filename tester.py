@@ -411,7 +411,8 @@ def fit_adapter(
 
     Edit this function to make sure the tests work with your code
     """
-    result = fit(datapoints, np.ascontiguousarray(initial_centroids), eps, max_iter)
+    result = fit(max_iter, eps,  (np.ascontiguousarray(initial_centroids)).tolist(), datapoints.tolist())
+    result = np.array(result)
     return np.asarray(result)
 
 
@@ -457,13 +458,13 @@ def test_fit(trials=5):
         return
 
     try:
-        import mykmeanspp
+        import mykmeanssp
     except ModuleNotFoundError:
         print_red("'mykmeanspp' module not found")
         return
 
     try:
-        fit = mykmeanspp.fit
+        fit = mykmeanssp.fit
     except AttributeError:
         print_red("'mykmeanspp.fit' not found")
 
