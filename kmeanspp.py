@@ -43,9 +43,12 @@ def main():
     # sort by key
     df_joined = df_joined.sort_values(by=0)
     # convert to numpy array
-    vectors = df_joined.to_numpy()
+    #vectors = df_joined.to_numpy(dtype=np.float64)
     # remove keys
-    vectors = vectors[:, 1:]
+    #vectors = vectors[:, 1:]
+
+    vectors = df_joined.drop(columns=0).to_numpy(dtype=float).tolist()
+
 
     # Get Dimensions
     d = len(vectors[0])
@@ -94,7 +97,7 @@ def main():
             for center_num in range(len(centroids)):
                 s = 0
                 for j in range(d):
-                    delta_j = (vectors[i,j]-centroids[center_num][j])**2
+                    delta_j = (vectors[i][j]-centroids[center_num][j])**2
                     s += delta_j
                 delta = math.sqrt(s)
                 if delta < min_delta:
@@ -104,12 +107,13 @@ def main():
         # Find new cantroid.
         sum_prob = sum(prob)
         divided = [x / sum_prob for x in prob]
-        sample = np.random.choice(np.arange(0, len(vectors)), size=1, p=divided)
-        centroids.append(copy.deepcopy(vectors[sample[0]]))
-        centroids_index.append(sample[0])
+        divided = [float(x) for x in divided]
+        sample = np.random.choice(len(vectors), p=divided)
+        centroids.append(copy.deepcopy(vectors[sample]))
+        centroids_index.append(sample)
 
-    centroids = mykmeanssp.fit(iter, epsilon, [arr.tolist() for arr in centroids], vectors.tolist())
-  
+    centroids = mykmeanssp.fit(iter, epsilon, centroids, vectors)
+
     # Print the centroids' original index.
     for j in range(k):
         if j==(k-1):

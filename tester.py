@@ -15,7 +15,7 @@ from typing import Callable, Optional, Sequence
 import numpy as np
 
 __author__ = "Yahel Caspi"
-__version__ = "1.1.0"
+__version__ = "1.2.1"
 
 LINE_CONFIG_REGEX = re.compile(
     r"(?P<idx>\d+)\. k=(?P<k>\d+), max_iter\s+=\s+(?:not provided|(?P<max_iter>\d+)),\s+eps=(?P<eps>\d+(?:\.\d+)?),\s+(?P<filename1>\w+),\s+(?P<filename2>\w+)"
@@ -196,7 +196,7 @@ def run_test_files(tests_dir: Path):
         elif USE_VALGRIND and result.returncode == VALGRIND_ERRCODE:
             valgrind_log = valgrind_logfile.read()  # type: ignore
             print_red("memory leak detected by valgrind")
-            print_white_on_red(valgrind_log)
+            print_white_on_red(valgrind_log.decode())
 
         if result.stderr:
             success = False
@@ -296,6 +296,7 @@ def test_input_handling():
             expected_result = True
             if result.returncode != 1 and not (
                 result.returncode == 0 and IGNORE_ERRORCODE_0
+                or result.returncode == VALGRIND_ERRCODE and USE_VALGRIND
             ):
                 expected_result = False
                 print_red(
@@ -304,7 +305,7 @@ def test_input_handling():
             elif USE_VALGRIND and result.returncode == VALGRIND_ERRCODE:
                 valgrind_log = valgrind_logfile.read()  # type: ignore
                 print_red("memory leak detected by valgrind")
-                print_white_on_red(valgrind_log)
+                print_white_on_red(valgrind_log.decode())
 
             if result.stdout.rstrip("\n") != params[param_name]["error_msg"]:
                 expected_result = False
@@ -341,13 +342,14 @@ def test_input_handling():
     result, valgrind_logfile = execute(config)
 
     expected_result = True
-    if result.returncode != 1 and not (result.returncode == 0 and IGNORE_ERRORCODE_0):
+    if result.returncode != 1 and not (result.returncode == 0 and IGNORE_ERRORCODE_0
+                                       or result.returncode == VALGRIND_ERRCODE and USE_VALGRIND):
         expected_result = False
         print_red("failure: process accepted too many arguments")
     elif USE_VALGRIND and result.returncode == VALGRIND_ERRCODE:
         valgrind_log = valgrind_logfile.read()  # type: ignore
         print_red("memory leak detected by valgrind")
-        print_white_on_red(valgrind_log)
+        print_white_on_red(valgrind_log.decode())
 
     if result.stdout.rstrip("\n") != "An Error Has Occurred":
         expected_result = False
@@ -411,8 +413,8 @@ def fit_adapter(
 
     Edit this function to make sure the tests work with your code
     """
-    result = fit(max_iter, eps,  (np.ascontiguousarray(initial_centroids)).tolist(), datapoints.tolist())
-    result = np.array(result)
+    result = fit(max_iter, eps, (np.ascontiguousarray(initial_centroids)).tolist(), datapoints.tolist())
+    result = np.asarray(result)
     return np.asarray(result)
 
 
@@ -450,7 +452,7 @@ def kmeans_reference(datapoints, init_centroids, eps=0.001, max_iter=300):
 
 
 def test_fit(trials=5):
-    print("Testing 'mykmeanspp.fit'")
+    print("Testing 'mykmeanssp.fit'")
     try:
         from sklearn import cluster as skl_cluster
     except ModuleNotFoundError:
@@ -460,13 +462,13 @@ def test_fit(trials=5):
     try:
         import mykmeanssp
     except ModuleNotFoundError:
-        print_red("'mykmeanspp' module not found")
+        print_red("'mykmeanssp' module not found")
         return
 
     try:
         fit = mykmeanssp.fit
     except AttributeError:
-        print_red("'mykmeanspp.fit' not found")
+        print_red("'mykmeanssp.fit' not found")
 
     for trial in range(1, trials + 1):
         print(f"trial {trial}:", end=" ")
@@ -496,16 +498,14 @@ def test_fit(trials=5):
 from typing import IO, Any
 
 
-def execute(
-    config, use_valgrind=False
-) -> tuple[subprocess.CompletedProcess[str], Optional[IO[Any]]]:
+def execute(config) -> tuple[subprocess.CompletedProcess[str], Optional[IO[Any]]]:
     args = ["python3", "kmeanspp.py", config["k"]]
     if config.get("max_iter"):
         args.append(config["max_iter"])
     args += [config["eps"], config["filename1"], config["filename2"]]
 
     pass_fds = []
-    if use_valgrind:
+    if USE_VALGRIND:
         logfile = tempfile.TemporaryFile()
         fd = logfile.fileno()
         # Ensures the fd is inherited by child processes
@@ -516,6 +516,9 @@ def execute(
             "--leak-check=full",
             f"--log-fd={fd}",
             f"--error-exitcode={VALGRIND_ERRCODE}",
+            "--suppressions=python.supp",
+            "--show-leak-kinds=definite,indirect",
+            "--errors-for-leak-kinds=definite,indirect",
         ] + args
 
         pass_fds.append(fd)
@@ -530,7 +533,7 @@ def execute(
         pass_fds=pass_fds,
     )
 
-    if use_valgrind:
+    if USE_VALGRIND:
         logfile.seek(0)
         return result, logfile
 
