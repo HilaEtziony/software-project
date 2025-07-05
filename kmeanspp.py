@@ -78,7 +78,7 @@ def main():
 
     # choose first centroid
     np.random.seed(1234)
-    random_index = np.random.choice(np.arange(1, len(vectors)+1))
+    random_index = np.random.choice(len(vectors))
     centroids = [copy.deepcopy(vectors[random_index])]
     centroids_index = [random_index]
 
