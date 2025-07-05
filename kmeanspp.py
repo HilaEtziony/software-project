@@ -42,13 +42,8 @@ def main():
     df_joined = pd.merge(df1, df2, on=0, how='inner')
     # sort by key
     df_joined = df_joined.sort_values(by=0)
-    # convert to numpy array
-    #vectors = df_joined.to_numpy(dtype=np.float64)
-    # remove keys
-    #vectors = vectors[:, 1:]
-
+    # remove keys and convert to list
     vectors = df_joined.drop(columns=0).to_numpy(dtype=float).tolist()
-
 
     # Get Dimensions
     d = len(vectors[0])
