@@ -1,7 +1,6 @@
 import sys
 import copy
 import math
-import pandas as pd
 import numpy as np
 import mykmeanssp
 
@@ -35,15 +34,20 @@ def main():
         print("An Error Has Occurred")
         sys.exit(1)
 
-    # Reading files
-    df1 = pd.read_csv(file_name_1, header=None)
-    df2 = pd.read_csv(file_name_2, header=None)
-    # inner join by key
-    df_joined = pd.merge(df1, df2, on=0, how='inner')
-    # sort by key
-    df_joined = df_joined.sort_values(by=0)
-    # remove keys and convert to list
-    vectors = df_joined.drop(columns=0).to_numpy(dtype=float).tolist()
+    # Load files into NumPy arrays
+    data1 = np.loadtxt(file_name_1, delimiter=',')
+    data2 = np.loadtxt(file_name_2, delimiter=',')
+
+    # Build dictionaries keyed by first column
+    dict1 = {int(row[0]): row[1:] for row in data1}
+    dict2 = {int(row[0]): row[1:] for row in data2}
+
+    # Find common keys
+    common_keys = sorted(set(dict1.keys()) & set(dict2.keys()))
+
+    # Merge rows by key and build the list
+    vectors = [np.concatenate([dict1[k], dict2[k]]).tolist() for k in common_keys]
+
 
     # Get Dimensions
     d = len(vectors[0])
