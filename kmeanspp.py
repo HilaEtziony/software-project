@@ -48,7 +48,6 @@ def main():
     # Merge rows by key and build the list
     vectors = [np.concatenate([dict1[k], dict2[k]]).tolist() for k in common_keys]
 
-
     # Get Dimensions
     d = len(vectors[0])
     n = len(vectors)
