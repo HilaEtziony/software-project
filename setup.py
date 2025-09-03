@@ -1,14 +1,14 @@
 from setuptools import setup, Extension
 
-module = Extension('mykmeanssp',
+module = Extension('symnmfmodule',
                     sources=[
-                        'kmeansmodule.c', 
-                        'kmeans.c'
+                        'symnmfmodule.c', 
+                        'symnmf.c'
                         ])
 
 setup(
-    name='mykmeanssp',
+    name='symnmfmodule',
     version='1.0',
-    description='KMeans C extension module',
+    description='symNMF C extension module',
     ext_modules=[module]
 )
