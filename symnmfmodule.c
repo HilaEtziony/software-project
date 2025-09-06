@@ -112,12 +112,12 @@ static PyObject* symnmf(PyObject* self, PyObject* args) {
         PyList_SetItem(result, i, c); 
     }
 
-    /* Memory cleanup */
-    for (i = 0; i < k; i++) {
+    /* Memory cleanup */ 
+    for (i = 0; i < k; i++)  {     /* should run until n no? ************************ */   
         free_cords(H_metrix_lines_list[i]);
     }
     free(H_metrix_lines_list);
-    free_vectors(H_metrix_lines_list);
+    free_vectors(H_metrix_lines_list); /* I think there is a typo problem. H_metrix_lines_list is not vector , you can use free_cords , you have it already in h file************* */
 
     return result;
 }
@@ -146,7 +146,7 @@ static PyObject* sym(PyObject* self, PyObject* args) {
     H_metrix_lines_list = (struct cord**)calloc(n, sizeof(struct cord*));
 
     /* Calling the C implementation */
-    sym_algo(H_metrix_lines_list, W_metrix_lines_list);
+    sym(H_metrix_lines_list, W_metrix_lines_list);
     
     /* New conversion from C to Python */
     result = PyList_New(n);
@@ -160,7 +160,7 @@ static PyObject* sym(PyObject* self, PyObject* args) {
         free_cords(H_metrix_lines_list[i]);
     }
     free(H_metrix_lines_list);
-    free_vectors(H_metrix_lines_list);
+    free_vectors(H_metrix_lines_list); /* I think there is a typo problem. H_metrix_lines_list is not vector ************* */
 
     return result;
 }

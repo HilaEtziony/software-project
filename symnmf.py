@@ -15,7 +15,7 @@ def algo(k, goal, vectors):
         normalized_matrix = symnmfmodule.norm(vectors)
         total = sum(sum(row) for row in normalized_matrix)
         m = total/(n*n)
-        initial_metrix = np.random.uniform(0, 2*math.sqrt(m/k), size=(n,n))
+        initial_metrix = np.random.uniform(0, 2*math.sqrt(m/k), size=(n,k)) 
         result_matrix = symnmfmodule.symnmf(k, initial_metrix, normalized_matrix)
     elif goal == "sym":
         result_matrix = symnmfmodule.sym(vectors)
