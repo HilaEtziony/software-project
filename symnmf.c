@@ -36,7 +36,7 @@ void free_vectors(struct vector *head) {
     }
 }
 
-/* ---------------- glue: linked lists <-> dense ---------------- */
+
 
 static int cords_len(struct cord *c) {
     int len;
