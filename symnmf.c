@@ -8,26 +8,10 @@
 #include <math.h>
 #include "symnmf.h"
 
-/* ---------------- tunables ---------------- */
-
 #define EPS 1e-9
 #define MAX_ITER 300
 #define TOL 1e-4
 
-/* ---------------- internal declarations ---------------- */
-
-static int      cords_len(struct cord *c);
-static int      vectors_len(struct vector *v);
-static double** vectors_to_dense(struct vector *V, int *out_n, int *out_m);
-static void     dense_to_cords_rows(double **M, int n, int m, struct cord **out_rows);
-
-static void     die(void);
-static char*    my_strdup(const char *s);
-static struct vector* dense_to_vectors(double **M, int n, int m);
-static struct vector* rows_to_vector(struct cord **rows, int n);
-static void     print_rows(struct cord **rows, int n, int m);
-static int      read_csv_dense(const char *path, double ***out_M, int *out_n, int *out_m);
-static int      read_stdin_as_vectors(struct vector **out_head, int *out_n, int *out_m);
 
 /* ---------------- memory helpers (exported in .h) ---------------- */
 
