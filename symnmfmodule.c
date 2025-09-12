@@ -6,8 +6,6 @@
 #include <math.h>
 #include "symnmf.h"
 
-
-
 static struct cord* build_cord_from_list(PyObject* py_list) {
     int d, i;
     struct cord* head = NULL;
@@ -19,7 +17,15 @@ static struct cord* build_cord_from_list(PyObject* py_list) {
     d = PyObject_Length(py_list);
     for (i = 0; i < d; i++) {
         item = PyList_GetItem(py_list, i);
+        if (!item) {  
+            free_cords(head);
+            return NULL;
+        }
         val = PyFloat_AsDouble(item);
+        if (PyErr_Occurred()) {  
+            free_cords(head);
+            return NULL;
+        }
         new_cord = (struct cord*)malloc(sizeof(struct cord));
         new_cord->value = val;
         new_cord->next = NULL;
@@ -67,6 +73,10 @@ static PyObject* cords_to_pylist(struct cord* c , int d) {
     list = PyList_New(d);
     for (i = 0; i < d; ++i){
         python_float = PyFloat_FromDouble(c->value);
+        if (!python_float) {
+            Py_DECREF(list);
+            return NULL;
+        }
         PyList_SetItem(list, i, python_float);
         c = c->next;
     }
@@ -74,32 +84,39 @@ static PyObject* cords_to_pylist(struct cord* c , int d) {
 }
 
 /* Wrapping the function */
-
-static PyObject* symnmf(PyObject* self, PyObject* args) {
-    PyObject *py_H_metrix = NULL, *py_W_metrix = NULL;
-    PyObject* py_c = NULL;
-    PyObject* c = NULL;
-    PyObject* result = NULL;
-    PyObject* first = NULL;
+static PyObject* py_symnmf(PyObject* self, PyObject* args) {
+    (void)self;
+    PyObject * py_H_metrix = NULL;
+    PyObject * py_W_metrix = NULL;
+    PyObject * py_c = NULL;
+    PyObject * c = NULL;
+    PyObject * result = NULL;
     int k, i, n;
-    struct vector* W_metrix_lines_list = NULL;
-    struct cord** H_metrix_lines_list = NULL;
+    struct vector * W_metrix_lines_list = NULL;
+    struct cord ** H_metrix_lines_list = NULL;
 
     if (!PyArg_ParseTuple(args, "iOO", &k, &py_H_metrix, &py_W_metrix)) {
         return NULL;
     }
 
     n = PyObject_Length(py_H_metrix);
-    if (n < 0) {
+    if (n <= 0) {
         return NULL;
     }
 
     W_metrix_lines_list = build_vector_list(py_W_metrix);
-
     H_metrix_lines_list = (struct cord**)calloc(n, sizeof(struct cord*));
     for (i = 0; i < n; i++) {
         py_c = PyList_GetItem(py_H_metrix, i);
         H_metrix_lines_list[i] = build_cord_from_list(py_c);
+        if (H_metrix_lines_list[i] == NULL) {
+            for (int j = 0; j < i; j++) {
+                free_cords(H_metrix_lines_list[j]);
+            }
+            free(H_metrix_lines_list);
+            free_vectors(W_metrix_lines_list);
+            return NULL;
+        }
     }
 
     /* Calling the C implementation */
@@ -107,87 +124,233 @@ static PyObject* symnmf(PyObject* self, PyObject* args) {
     
     /* New conversion from C to Python */
     result = PyList_New(n);
+    if (!result) {
+        for (i = 0; i < n; i++) {
+            free_cords(H_metrix_lines_list[i]);
+        }
+        free(H_metrix_lines_list);
+        free_vectors(W_metrix_lines_list);
+        return NULL;
+    }
     for (i = 0; i < n; i++) {
         c = cords_to_pylist(H_metrix_lines_list[i], k);
+        if (!c) {
+            Py_DECREF(result);
+            for (int j = 0; j < n; j++) {
+                free_cords(H_metrix_lines_list[j]);
+            }
+            free(H_metrix_lines_list);
+            free_vectors(W_metrix_lines_list);
+            return NULL;
+        }
         PyList_SetItem(result, i, c); 
     }
 
     /* Memory cleanup */ 
-    for (i = 0; i < k; i++)  {     /* should run until n no? ************************ */   
+    for (i = 0; i < n; i++)  {     
         free_cords(H_metrix_lines_list[i]);
     }
     free(H_metrix_lines_list);
-    free_vectors(H_metrix_lines_list); /* I think there is a typo problem. H_metrix_lines_list is not vector , you can use free_cords , you have it already in h file************* */
+    free_vectors(W_metrix_lines_list);
 
     return result;
 }
 
-static PyObject* sym(PyObject* self, PyObject* args) {
+static PyObject* py_sym(PyObject* self, PyObject* args) {
+    (void)self;
     PyObject *py_X_datapoints = NULL;
-    PyObject* py_c = NULL;
     PyObject* c = NULL;
     PyObject* result = NULL;
-    PyObject* first = NULL;
-    int d, i, n;
-    struct vector* W_metrix_lines_list = NULL;
-    struct cord** H_metrix_lines_list = NULL;
+    int i, n;
+    struct vector* X_datapoints = NULL;
+    struct cord** A_metrix_lines_list = NULL;
 
     if (!PyArg_ParseTuple(args, "O", &py_X_datapoints)) {
         return NULL;
     }
 
-    d = PyObject_Length(py_X_datapoints);
-    if (d < 0) {
+    n = PyObject_Length(py_X_datapoints);
+    if (n <= 0) {
         return NULL;
     }
 
-    W_metrix_lines_list = build_vector_list(py_X_datapoints);
-
-    H_metrix_lines_list = (struct cord**)calloc(n, sizeof(struct cord*));
+    X_datapoints = build_vector_list(py_X_datapoints);
+    A_metrix_lines_list = (struct cord**)calloc(n, sizeof(struct cord*));
 
     /* Calling the C implementation */
-    sym(H_metrix_lines_list, W_metrix_lines_list);
+    sym(A_metrix_lines_list, X_datapoints);
     
     /* New conversion from C to Python */
     result = PyList_New(n);
+    if (!result) {
+        for (i = 0; i < n; i++) {
+            free_cords(A_metrix_lines_list[i]);
+        }
+        free(A_metrix_lines_list);
+        free_vectors(X_datapoints);
+        return NULL;
+    }
     for (i = 0; i < n; i++) {
-        c = cords_to_pylist(H_metrix_lines_list[i], n);
+        c = cords_to_pylist(A_metrix_lines_list[i], n);
+        if (!c) {
+            Py_DECREF(result);
+            for (int j = 0; j < n; j++) {
+                free_cords(A_metrix_lines_list[j]);
+            }
+            free(A_metrix_lines_list);
+            free_vectors(X_datapoints);
+            return NULL;
+        }
         PyList_SetItem(result, i, c); 
     }
 
     /* Memory cleanup */
     for (i = 0; i < n; i++) {
-        free_cords(H_metrix_lines_list[i]);
+        free_cords(A_metrix_lines_list[i]);
     }
-    free(H_metrix_lines_list);
-    free_vectors(H_metrix_lines_list); /* I think there is a typo problem. H_metrix_lines_list is not vector ************* */
+    free(A_metrix_lines_list);
+    free_vectors(X_datapoints);
 
     return result;
 }
 
-//TODO - after gad will write his part, check symnmf and sym are fir and duplicate sym to ddg and norm
+static PyObject* py_ddg(PyObject* self, PyObject* args) {
+    (void)self;
+    PyObject *py_X_datapoints = NULL;
+    PyObject* c = NULL;
+    PyObject* result = NULL;
+    int i, n;
+    struct vector* X_datapoints = NULL;
+    struct cord** D_metrix_lines_list = NULL;
+
+    if (!PyArg_ParseTuple(args, "O", &py_X_datapoints)) {
+        return NULL;
+    }
+
+    n = PyObject_Length(py_X_datapoints);
+    if (n <= 0) {
+        return NULL;
+    }
+
+    X_datapoints = build_vector_list(py_X_datapoints);
+    D_metrix_lines_list = (struct cord**)calloc(n, sizeof(struct cord*));
+
+    /* Calling the C implementation */
+    ddg(D_metrix_lines_list, X_datapoints);
+    
+    /* New conversion from C to Python */
+    result = PyList_New(n);
+    if (!result) {
+        for (i = 0; i < n; i++) {
+            free_cords(D_metrix_lines_list[i]);
+        }
+        free(D_metrix_lines_list);
+        free_vectors(X_datapoints);
+        return NULL;
+    }
+    for (i = 0; i < n; i++) {
+        c = cords_to_pylist(D_metrix_lines_list[i], n);
+        if (!c) {
+            Py_DECREF(result);
+            for (int j = 0; j < n; j++) {
+                free_cords(D_metrix_lines_list[j]);
+            }
+            free(D_metrix_lines_list);
+            free_vectors(X_datapoints);
+            return NULL;
+        }
+        PyList_SetItem(result, i, c); 
+    }
+
+    /* Memory cleanup */
+    for (i = 0; i < n; i++) {
+        free_cords(D_metrix_lines_list[i]);
+    }
+    free(D_metrix_lines_list);
+    free_vectors(X_datapoints);
+
+    return result;
+}
+
+static PyObject* py_norm(PyObject* self, PyObject* args) {
+    (void)self;
+    PyObject *py_X_datapoints = NULL;
+    PyObject* c = NULL;
+    PyObject* result = NULL;
+    int i, n;
+    struct vector* X_datapoints = NULL;
+    struct cord** W_metrix_lines_list = NULL;
+
+    if (!PyArg_ParseTuple(args, "O", &py_X_datapoints)) {
+        return NULL;
+    }
+
+    n = PyObject_Length(py_X_datapoints);
+    if (n <= 0) {
+        return NULL;
+    }
+
+    X_datapoints = build_vector_list(py_X_datapoints);
+    W_metrix_lines_list = (struct cord**)calloc(n, sizeof(struct cord*));
+
+    /* Calling the C implementation */
+    norm(W_metrix_lines_list, X_datapoints);
+    
+    /* New conversion from C to Python */
+    result = PyList_New(n);
+    if (!result) {
+        for (i = 0; i < n; i++) {
+            free_cords(W_metrix_lines_list[i]);
+        }
+        free(W_metrix_lines_list);
+        free_vectors(X_datapoints);
+        return NULL;
+    }
+    for (i = 0; i < n; i++) {
+        c = cords_to_pylist(W_metrix_lines_list[i], n);
+        if (!c) {
+            Py_DECREF(result);
+            for (int j = 0; j < n; j++) {
+                free_cords(W_metrix_lines_list[j]);
+            }
+            free(W_metrix_lines_list);
+            free_vectors(X_datapoints);
+            return NULL;
+        }
+        PyList_SetItem(result, i, c); 
+    }
+
+    /* Memory cleanup */
+    for (i = 0; i < n; i++) {
+        free_cords(W_metrix_lines_list[i]);
+    }
+    free(W_metrix_lines_list);
+    free_vectors(X_datapoints);
+
+    return result;
+}
 
 /* 3. === Module Method Table === */
 
 static PyMethodDef symnmfMethods[] = {
     {
-        "symnmf",  /* the Python method name that will be used */
-        (PyCFunction)symnmf,  /* the C-function that implements the Python function and returns static PyObject*  */         
+        "py_symnmf",  /* the Python method name that will be used */
+        (PyCFunction)py_symnmf,  /* the C-function that implements the Python function and returns static PyObject*  */         
         METH_VARARGS,/* flags indicating parameters accepted for this function */
         PyDoc_STR("Run symNMF full algorithm from C")
     },{
-        "sym",  /* the Python method name that will be used */
-        (PyCFunction)sym,  /* the C-function that implements the Python function and returns static PyObject*  */         
+        "py_sym",  /* the Python method name that will be used */
+        (PyCFunction)py_sym,  /* the C-function that implements the Python function and returns static PyObject*  */         
         METH_VARARGS,/* flags indicating parameters accepted for this function */
         PyDoc_STR("Calculate and output the similarity matrix")
     },{
-        "ddg",  /* the Python method name that will be used */
-        (PyCFunction)ddg,  /* the C-function that implements the Python function and returns static PyObject*  */         
+        "py_ddg",  /* the Python method name that will be used */
+        (PyCFunction)py_ddg,  /* the C-function that implements the Python function and returns static PyObject*  */         
         METH_VARARGS,/* flags indicating parameters accepted for this function */
         PyDoc_STR("Calculate and output the diagonal degree matrix")
     },{
-        "norm",  /* the Python method name that will be used */
-        (PyCFunction)norm,  /* the C-function that implements the Python function and returns static PyObject*  */         
+        "py_norm",  /* the Python method name that will be used */
+        (PyCFunction)py_norm,  /* the C-function that implements the Python function and returns static PyObject*  */         
         METH_VARARGS,/* flags indicating parameters accepted for this function */
         PyDoc_STR("Calculate and output the normalized similarity matrix")
     },{
@@ -202,7 +365,11 @@ static struct PyModuleDef symnmfmodule = {
     "symnmfmodule", /* name of module */
     NULL,
     -1,
-    symnmfMethods /* the PyMethodDef array from before containing the methods of the extension */
+    symnmfMethods, /* the PyMethodDef array from before containing the methods of the extension */
+    NULL,
+    NULL,
+    NULL,
+    NULL
 };
 
 /* 5. === Module Initialization === */

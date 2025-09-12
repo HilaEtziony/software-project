@@ -5,6 +5,12 @@ import numpy as np
 from sklearn.metrics import silhouette_score
 import symnmfmodule
 
+def is_integer_string(s):
+    try:
+        return float(s).is_integer()
+    except ValueError:
+        return False
+
 def kmeans_algo(k, iter, vectors):
     # Initialize
     epsilon = 0.001
@@ -66,34 +72,44 @@ def kmeans_algo(k, iter, vectors):
 def main():
     # Parse Arguments 
     if (len(sys.argv) == 3):
-        k = sys.argv[1]
+        k = int(sys.argv[1])
         file_name = sys.argv[2]
     else:
         print("An Error Has Occurred")
         sys.exit(1)
 
     # Load files into NumPy arrays
-    X_datapoints = np.loadtxt(file_name, delimiter=',')
+    try:
+        X_datapoints = np.loadtxt(file_name, delimiter=',', ndmin=2)
+    except Exception as e:
+        print("Exception loading file:", e, file=sys.stderr)
+        sys.exit(1)
     # Get Dimensions
-    n, d = print(X_datapoints.shape)
-    vectors = [datapoint.tolist() for datapoint in data]
+    n, d = X_datapoints.shape
+    vectors = X_datapoints.tolist()
+
+    if (is_integer_string(k) and 1 < int(float(k)) and int(float(k)) < n):
+        k = int(float(k))
+    else:
+        print("Invalid number of clusters!")
+        sys.exit(1)
 
     # Perform symNMF algorithm
     np.random.seed(1234)
-    normalized_matrix = symnmfmodule.norm(vectors)
+    normalized_matrix = symnmfmodule.py_norm(vectors)
     total = sum(sum(row) for row in normalized_matrix)
     m = total/(n*n)
-    H_initial_metrix = np.random.uniform(0, 2*math.sqrt(m/k), size=(n,n))
-    H_final_matrix = symnmfmodule.symnmf(k, H_initial_metrix, normalized_matrix)
+    H_initial_metrix = np.random.uniform(0, 2*math.sqrt(m/k), size=(n,k))
+    H_initial_metrix = H_initial_metrix.tolist()
+    H_final_matrix = symnmfmodule.py_symnmf(k, H_initial_metrix, normalized_matrix)
 
     # Find every row's cluster at H metrix.
-    for i in range(k):
-        labels_symnmf = [row.index(max(row)) for row in H_final_matrix]
+    labels_symnmf = [row.index(max(row)) for row in H_final_matrix]
 
     # Calculates symMNF score and Kmeans score.
     symnmf_score = silhouette_score(X_datapoints, labels_symnmf)
     print("nmf: {:.4f}".format(symnmf_score))
-    labels_kmeans = kmeans_algo(3, 600, vectors)
+    labels_kmeans = kmeans_algo(k, 300, vectors)
     kmeans_score = silhouette_score(X_datapoints, labels_kmeans)
     print("kmeans: {:.4f}".format(kmeans_score))
 

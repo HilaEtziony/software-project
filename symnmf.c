@@ -13,6 +13,277 @@
 #define TOL 1e-4
 
 
+static int cords_len(struct cord *c) {
+    int len;
+    len = 0;
+    while (c != NULL) {
+        len += 1;
+        c = c->next;
+    }
+    return len;
+}
+
+static int vectors_len(struct vector *v) {
+    int len;
+    len = 0;
+    while (v != NULL) {
+        len += 1;
+        v = v->next;
+    }
+    return len;
+}
+
+/* ---------------- CLI utilities ---------------- */
+
+static void die(void) {
+    /* Required exact error message for the automatic tests */
+    fprintf(stderr, "An Error Has Occurred\n");
+    exit(1);
+}
+
+static char *my_strdup(const char *s) {
+    size_t n;
+    char *p;
+    n = strlen(s) + 1;
+    p = (char *)malloc(n);
+    if (p == NULL) {
+        return NULL;
+    }
+    memcpy(p, s, n);
+    return p;
+}
+
+static struct vector *dense_to_vectors(double **M, int n, int m) {
+    int i;
+    struct vector *head, *curr, *nv;
+
+    head = NULL; curr = NULL; nv = NULL;
+
+    for (i = 0; i < n; i += 1) {
+        nv = (struct vector *)malloc(sizeof(struct vector));
+        if (nv == NULL) {
+            die();
+        }
+        nv->cords = cords_from_array(M[i], m);
+        nv->next  = NULL;
+
+        if (head == NULL) {
+            head = nv;
+            curr = nv;
+        } else {
+            curr->next = nv;
+            curr = nv;
+        }
+    }
+    return head;
+}
+
+static void print_rows(struct cord **rows, int n, int m) {
+    int i, j;
+    struct cord *c;
+
+    i = j = 0;
+    c = NULL;
+
+    for (i = 0; i < n; i += 1) {
+        c = rows[i];
+        for (j = 0; j < m; j += 1) {
+            if (c == NULL) {
+                die();
+            }
+            if (j == m - 1) {
+                printf("%.4f\n", c->value);
+            } else {
+                printf("%.4f,", c->value);
+            }
+            c = c->next;
+        }
+    }
+}
+
+static int read_csv_dense(const char *path, double ***out_M, int *out_n, int *out_m) {
+    FILE *f;
+    const size_t BUFSZ = 1u << 20; /* 1MB */
+    char *buf, *p, *tok, *line;
+    int cap, n, m, j;
+    int only_ws, cnt;
+    int i;
+    double **M;
+    double **tmp;
+
+    f = fopen(path, "r");
+    if (f == NULL) {
+        return -1;
+    }
+
+    cap = 128; n = 0; m = -1; j = 0;
+    buf = (char *)malloc(BUFSZ);
+    if (buf == NULL) {
+        fclose(f);
+        return -1;
+    }
+
+    M = (double **)malloc(cap * sizeof(*M));
+    if (M == NULL) {
+        free(buf);
+        fclose(f);
+        return -1;
+    }
+
+    while (fgets(buf, (int)BUFSZ, f) != NULL) {
+        only_ws = 1;
+        p = buf;
+        while (*p != '\0') {
+            if (!(*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')) {
+                only_ws = 0;
+                break;
+            }
+            p += 1;
+        }
+        if (only_ws == 1) {
+            continue;
+        }
+
+        if (m < 0) {
+            cnt = 1;
+            for (p = buf; *p != '\0'; p += 1) {
+                if (*p == ',') {
+                    cnt += 1;
+                }
+            }
+            m = cnt;
+        }
+
+        line = my_strdup(buf);
+        if (line == NULL) {
+            free(buf);
+            fclose(f);
+            return -1;
+        }
+
+        j = 0;
+        M[n] = (double *)malloc(m * sizeof(**M));
+        if (M[n] == NULL) {
+            free(line);
+            free(buf);
+            fclose(f);
+            return -1;
+        }
+
+        tok = strtok(line, ",\r\n");
+        while (tok != NULL && j < m) {
+            M[n][j] = strtod(tok, NULL);
+            j += 1;
+            tok = strtok(NULL, ",\r\n");
+        }
+        free(line);
+
+        if (j != m) {
+            free(M[n]);
+            free(buf);
+            fclose(f);
+            return -1;
+        }
+
+        n += 1;
+        if (n == cap) {
+            cap *= 2;
+            tmp = (double **)realloc(M, cap * sizeof(*M));
+            if (tmp == NULL) {
+                free(buf);
+                fclose(f);
+                return -1;
+            }
+            M = tmp;
+        }
+    }
+
+    free(buf);
+    fclose(f);
+
+    if (m <= 0 || n <= 0) {
+        for (i = 0; i < n; i += 1) {
+            free(M[i]);
+        }
+        free(M);
+        return -1;
+    }
+
+    *out_M = M;
+    *out_n = n;
+    *out_m = m;
+    return 0;
+}
+
+/* read from stdin: comma-separated values, newline ends row */
+static int read_stdin_as_vectors(struct vector **out_head, int *out_n, int *out_m) {
+    struct vector *head_vec, *curr_vec, *prev_vec;
+    struct cord   *head_cord, *curr_cord;
+    int n;
+    double val;
+    char ch;
+
+    head_vec = (struct vector *)malloc(sizeof(struct vector));
+    if (!head_vec) return -1;
+    curr_vec = head_vec;
+    curr_vec->next  = NULL;
+    curr_vec->cords = NULL;
+    prev_vec = NULL;
+
+    head_cord = (struct cord *)malloc(sizeof(struct cord));
+    if (!head_cord) { free(head_vec); return -1; }
+    curr_cord = head_cord;
+    curr_cord->next  = NULL;
+    curr_cord->value = 0.0;
+
+    n = 0;
+
+    while (scanf("%lf%c", &val, &ch) == 2) {
+        curr_cord->value = val;
+
+        if (ch == '\n') {
+            curr_vec->cords = head_cord;
+            prev_vec = curr_vec;
+
+            curr_vec->next = (struct vector *)malloc(sizeof(struct vector));
+            if (!curr_vec->next) { free_vectors(head_vec); return -1; }
+            curr_vec = curr_vec->next;
+            curr_vec->next  = NULL;
+            curr_vec->cords = NULL;
+
+            head_cord = (struct cord *)malloc(sizeof(struct cord));
+            if (!head_cord) { free_vectors(head_vec); return -1; }
+            curr_cord = head_cord;
+            curr_cord->next  = NULL;
+            curr_cord->value = 0.0;
+
+            n++;
+        } else {
+            curr_cord->next = (struct cord *)malloc(sizeof(struct cord));
+            if (!curr_cord->next) { free_vectors(head_vec); return -1; }
+            curr_cord = curr_cord->next;
+            curr_cord->next  = NULL;
+            curr_cord->value = 0.0;
+        }
+    }
+
+    if (n == 0) {
+        free(head_cord);
+        free(head_vec);
+        return -1;
+    }
+
+    free(head_cord);
+    free(curr_vec);
+    prev_vec->next = NULL;
+
+    *out_head = head_vec;
+    *out_n = n;
+    *out_m = cords_len(head_vec->cords);
+    return 0;
+}
+
+
 /* ---------------- memory helpers (exported in .h) ---------------- */
 
 void free_cords(struct cord *head) {
@@ -38,25 +309,6 @@ void free_vectors(struct vector *head) {
 
 
 
-static int cords_len(struct cord *c) {
-    int len;
-    len = 0;
-    while (c != NULL) {
-        len += 1;
-        c = c->next;
-    }
-    return len;
-}
-
-static int vectors_len(struct vector *v) {
-    int len;
-    len = 0;
-    while (v != NULL) {
-        len += 1;
-        v = v->next;
-    }
-    return len;
-}
 
 static double **vectors_to_dense(struct vector *V, int *out_n, int *out_m) {
     int i, j, n, m;
@@ -162,6 +414,31 @@ void free_dense(double **M, int n) {
 }
 
 /* ---------------- graph matrices: A, D, W (exported) ---------------- */
+static struct vector *rows_to_vector(struct cord **rows, int n) {
+    int i;
+    struct vector *head, *curr, *nv;
+
+    head = NULL; curr = NULL; nv = NULL;
+
+    for (i = 0; i < n; i += 1) {
+        nv = (struct vector *)malloc(sizeof(struct vector));
+        if (nv == NULL) {
+            die();
+        }
+        nv->cords = rows[i];
+        nv->next  = NULL;
+
+        if (head == NULL) {
+            head = nv;
+            curr = nv;
+        } else {
+            curr->next = nv;
+            curr = nv;
+            curr->next = NULL;
+        }
+    }
+    return head;
+}
 
 void sym(struct cord **out_rows, struct vector *data_rows) {
     int i, j, t, n, m, r;
@@ -537,298 +814,19 @@ void symnmf_algo(int k, struct cord **H, struct vector *W) {
     free_dense(Wmat, n);
 }
 
-
-
-
-/* ---------------- CLI utilities ---------------- */
-
-static void die(void) {
-    /* Required exact error message for the automatic tests */
-    fprintf(stderr, "An Error Has Occurred\n");
-    exit(1);
-}
-
-static char *my_strdup(const char *s) {
-    size_t n;
-    char *p;
-    n = strlen(s) + 1;
-    p = (char *)malloc(n);
-    if (p == NULL) {
-        return NULL;
-    }
-    memcpy(p, s, n);
-    return p;
-}
-
-static struct vector *dense_to_vectors(double **M, int n, int m) {
-    int i;
-    struct vector *head, *curr, *nv;
-
-    head = NULL; curr = NULL; nv = NULL;
-
-    for (i = 0; i < n; i += 1) {
-        nv = (struct vector *)malloc(sizeof(struct vector));
-        if (nv == NULL) {
-            die();
-        }
-        nv->cords = cords_from_array(M[i], m);
-        nv->next  = NULL;
-
-        if (head == NULL) {
-            head = nv;
-            curr = nv;
-        } else {
-            curr->next = nv;
-            curr = nv;
-        }
-    }
-    return head;
-}
-
-static struct vector *rows_to_vector(struct cord **rows, int n) {
-    int i;
-    struct vector *head, *curr, *nv;
-
-    head = NULL; curr = NULL; nv = NULL;
-
-    for (i = 0; i < n; i += 1) {
-        nv = (struct vector *)malloc(sizeof(struct vector));
-        if (nv == NULL) {
-            die();
-        }
-        nv->cords = rows[i];
-        nv->next  = NULL;
-
-        if (head == NULL) {
-            head = nv;
-            curr = nv;
-        } else {
-            curr->next = nv;
-            curr = nv;
-            curr->next = NULL;
-        }
-    }
-    return head;
-}
-
-static void print_rows(struct cord **rows, int n, int m) {
-    int i, j;
-    struct cord *c;
-
-    i = j = 0;
-    c = NULL;
-
-    for (i = 0; i < n; i += 1) {
-        c = rows[i];
-        for (j = 0; j < m; j += 1) {
-            if (c == NULL) {
-                die();
-            }
-            if (j == m - 1) {
-                printf("%.4f\n", c->value);
-            } else {
-                printf("%.4f,", c->value);
-            }
-            c = c->next;
-        }
-    }
-}
-
-static int read_csv_dense(const char *path, double ***out_M, int *out_n, int *out_m) {
-    FILE *f;
-    const size_t BUFSZ = 1u << 20; /* 1MB */
-    char *buf, *p, *tok, *line;
-    int cap, n, m, j;
-    int only_ws, cnt;
-    int i;
-    double **M;
-    double **tmp;
-
-    f = fopen(path, "r");
-    if (f == NULL) {
-        return -1;
-    }
-
-    cap = 128; n = 0; m = -1; j = 0;
-    buf = (char *)malloc(BUFSZ);
-    if (buf == NULL) {
-        fclose(f);
-        return -1;
-    }
-
-    M = (double **)malloc(cap * sizeof(*M));
-    if (M == NULL) {
-        free(buf);
-        fclose(f);
-        return -1;
-    }
-
-    while (fgets(buf, (int)BUFSZ, f) != NULL) {
-        only_ws = 1;
-        p = buf;
-        while (*p != '\0') {
-            if (!(*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')) {
-                only_ws = 0;
-                break;
-            }
-            p += 1;
-        }
-        if (only_ws == 1) {
-            continue;
-        }
-
-        if (m < 0) {
-            cnt = 1;
-            for (p = buf; *p != '\0'; p += 1) {
-                if (*p == ',') {
-                    cnt += 1;
-                }
-            }
-            m = cnt;
-        }
-
-        line = my_strdup(buf);
-        if (line == NULL) {
-            free(buf);
-            fclose(f);
-            return -1;
-        }
-
-        j = 0;
-        M[n] = (double *)malloc(m * sizeof(**M));
-        if (M[n] == NULL) {
-            free(line);
-            free(buf);
-            fclose(f);
-            return -1;
-        }
-
-        tok = strtok(line, ",\r\n");
-        while (tok != NULL && j < m) {
-            M[n][j] = strtod(tok, NULL);
-            j += 1;
-            tok = strtok(NULL, ",\r\n");
-        }
-        free(line);
-
-        if (j != m) {
-            free(M[n]);
-            free(buf);
-            fclose(f);
-            return -1;
-        }
-
-        n += 1;
-        if (n == cap) {
-            cap *= 2;
-            tmp = (double **)realloc(M, cap * sizeof(*M));
-            if (tmp == NULL) {
-                free(buf);
-                fclose(f);
-                return -1;
-            }
-            M = tmp;
-        }
-    }
-
-    free(buf);
-    fclose(f);
-
-    if (m <= 0 || n <= 0) {
-        for (i = 0; i < n; i += 1) {
-            free(M[i]);
-        }
-        free(M);
-        return -1;
-    }
-
-    *out_M = M;
-    *out_n = n;
-    *out_m = m;
-    return 0;
-}
-
-/* read from stdin: comma-separated values, newline ends row */
-static int read_stdin_as_vectors(struct vector **out_head, int *out_n, int *out_m) {
-    struct vector *head_vec, *curr_vec, *prev_vec;
-    struct cord   *head_cord, *curr_cord;
-    int n;
-    double val;
-    char ch;
-
-    head_vec = (struct vector *)malloc(sizeof(struct vector));
-    if (!head_vec) return -1;
-    curr_vec = head_vec;
-    curr_vec->next  = NULL;
-    curr_vec->cords = NULL;
-    prev_vec = NULL;
-
-    head_cord = (struct cord *)malloc(sizeof(struct cord));
-    if (!head_cord) { free(head_vec); return -1; }
-    curr_cord = head_cord;
-    curr_cord->next  = NULL;
-    curr_cord->value = 0.0;
-
-    n = 0;
-
-    while (scanf("%lf%c", &val, &ch) == 2) {
-        curr_cord->value = val;
-
-        if (ch == '\n') {
-            curr_vec->cords = head_cord;
-            prev_vec = curr_vec;
-
-            curr_vec->next = (struct vector *)malloc(sizeof(struct vector));
-            if (!curr_vec->next) { free_vectors(head_vec); return -1; }
-            curr_vec = curr_vec->next;
-            curr_vec->next  = NULL;
-            curr_vec->cords = NULL;
-
-            head_cord = (struct cord *)malloc(sizeof(struct cord));
-            if (!head_cord) { free_vectors(head_vec); return -1; }
-            curr_cord = head_cord;
-            curr_cord->next  = NULL;
-            curr_cord->value = 0.0;
-
-            n++;
-        } else {
-            curr_cord->next = (struct cord *)malloc(sizeof(struct cord));
-            if (!curr_cord->next) { free_vectors(head_vec); return -1; }
-            curr_cord = curr_cord->next;
-            curr_cord->next  = NULL;
-            curr_cord->value = 0.0;
-        }
-    }
-
-    if (n == 0) {
-        free(head_cord);
-        free(head_vec);
-        return -1;
-    }
-
-    free(head_cord);
-    free(curr_vec);
-    prev_vec->next = NULL;
-
-    *out_head = head_vec;
-    *out_n = n;
-    *out_m = cords_len(head_vec->cords);
-    return 0;
-}
-
 /* ---------------- main (CLI) ---------------- */
 
 int main(int argc, char **argv) {
     int n, d, from_stdin, i;
     const char *goal, *path;
-    struct vector *X_vecs, *Avec;
+    struct vector *X_vecs;
     double **X_dense;
     struct cord **A, **D, **Wrows;
 
     n = 0; d = 0; from_stdin = 0; i = 0;
     goal = NULL; path = NULL;
     X_vecs = NULL; X_dense = NULL;
-    Avec = NULL; A = NULL; D = NULL; Wrows = NULL;
+    A = NULL; D = NULL; Wrows = NULL;
 
     if (argc != 3) {
         die();
