@@ -1,0 +1,75 @@
+########################### IMPORTS ###########################
+
+import sys
+import numpy as np
+from shared import initialize_H_Matrix
+import symnmfmodule
+
+########################### FUNCTIONS ###########################
+
+def print_matrix(matrix):
+    """
+    Print matrix in the required format.
+    :param matrix: matrix for printing
+    :type matrix: list of lists
+    """
+    for row in matrix:
+        print(",".join(["{:.4f}".format(val) for val in row]))
+
+def algorithm(k, goal, data):
+    """
+    Run the relevant algorithm according to the given goal.
+    :param k: number of clusters
+    :type k: int
+    :param goal: the goal of the algorithm - "symnmf", "sym", "ddg", "norm"
+    :type goal: str
+    :param data: X data points
+    :type data: numpy.ndarray
+    """
+    # Get Dimensions
+    n, d = data.shape
+    vectors = data.tolist()
+
+    # Call the relevant algorithm according to the given goal
+    if goal == "symnmf":
+        normalized_matrix = symnmfmodule.norm(vectors)
+        initial_metrix = initialize_H_Matrix(normalized_matrix, k)
+        result_matrix = symnmfmodule.symnmf(k, initial_metrix, normalized_matrix)
+    elif goal == "sym":
+        result_matrix = symnmfmodule.sym(vectors)
+    elif goal == "ddg":
+        result_matrix = symnmfmodule.ddg(vectors)
+    elif goal == "norm":
+        result_matrix = symnmfmodule.norm(vectors)
+    else:
+        print("An Error Has Occurred")
+        sys.exit(1)
+
+    # Print the metrix.
+    print_matrix(result_matrix)
+
+########################### MAIN ###########################
+
+def main():
+    try:
+        # Parse Arguments 
+        if (len(sys.argv) == 4):
+            k = int(sys.argv[1])
+            goal = sys.argv[2]
+            file_name = sys.argv[3]
+        else:
+            print("An Error Has Occurred")
+            sys.exit(1)
+
+        # Load files into NumPy arrays
+        data = np.loadtxt(file_name, delimiter=',', ndmin=2)
+
+        # Call the algorithm function with the relevant goal.
+        algorithm(k, goal, data)
+
+    except Exception:
+        print("An Error Has Occurred 2")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

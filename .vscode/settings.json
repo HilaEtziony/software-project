@@ -2,5 +2,12 @@
     "files.associations": {
         "type_traits": "c",
         "stdlib.h": "c"
-    }
+    },
+    "python-envs.pythonProjects": [
+        {
+            "path": "tester_yahel/__pycache__",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        }
+    ]
 }
