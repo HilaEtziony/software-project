@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.metrics import silhouette_score
 import symnmfmodule
 from shared import initialize_H_Matrix
+from shared import check_and_get_k
 
 ########################### CONSTS ###########################
 
@@ -204,7 +205,7 @@ def main():
     try:
         # Parse Arguments 
         if (len(sys.argv) == 3):
-            k = int(sys.argv[1])
+            k = sys.argv[1]
             file_name = sys.argv[2]
         else:
             print("An Error Has Occurred")
@@ -212,6 +213,12 @@ def main():
 
         # Load file into NumPy arrays
         X_datapoints = np.loadtxt(file_name, delimiter=',', ndmin=2)
+
+        # Get Dimensions
+        n, d = X_datapoints.shape
+
+        # Check if k is an integer and 1 < k < n, exit if not valid
+        k = check_and_get_k(k, n)
 
         # Print the silhouette scores of the symNMF and k-means algorithms.
         print_symNMF_score(k, X_datapoints)

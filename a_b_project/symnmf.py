@@ -3,6 +3,7 @@
 import sys
 import numpy as np
 from shared import initialize_H_Matrix
+from shared import check_and_get_k
 import symnmfmodule
 
 ########################### FUNCTIONS ###########################
@@ -16,20 +17,16 @@ def print_matrix(matrix):
     for row in matrix:
         print(",".join(["{:.4f}".format(val) for val in row]))
 
-def algorithm(k, goal, data):
+def algorithm(k, goal, vectors):
     """
     Run the relevant algorithm according to the given goal.
     :param k: number of clusters
     :type k: int
     :param goal: the goal of the algorithm - "symnmf", "sym", "ddg", "norm"
     :type goal: str
-    :param data: X data points
-    :type data: numpy.ndarray
+    :param vectors: list of vectors
+    :type vectors: list of lists
     """
-    # Get Dimensions
-    n, d = data.shape
-    vectors = data.tolist()
-
     # Call the relevant algorithm according to the given goal
     if goal == "symnmf":
         normalized_matrix = symnmfmodule.norm(vectors)
@@ -54,7 +51,7 @@ def main():
     try:
         # Parse Arguments 
         if (len(sys.argv) == 4):
-            k = int(sys.argv[1])
+            k = sys.argv[1]
             goal = sys.argv[2]
             file_name = sys.argv[3]
         else:
@@ -64,11 +61,17 @@ def main():
         # Load files into NumPy arrays
         data = np.loadtxt(file_name, delimiter=',', ndmin=2)
 
-        # Call the algorithm function with the relevant goal.
-        algorithm(k, goal, data)
+        # Get Dimensions
+        n, d = data.shape
+
+        # Check if k is an integer and 1 < k < n, exit if not valid
+        k = check_and_get_k(k, n)
+
+        # Call the algorithm function with the relevant goal
+        algorithm(k, goal, data.tolist())
 
     except Exception:
-        print("An Error Has Occurred 2")
+        print("An Error Has Occurred")
         sys.exit(1)
 
 if __name__ == "__main__":
