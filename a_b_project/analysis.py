@@ -180,10 +180,9 @@ def print_symNMF_score(k, X_datapoints):
 
     # Find every row's cluster at H metrix.
     labels_symnmf = [row.index(max(row)) for row in H_final_matrix]
-    # Calculates symMNF score and Kmeans score.
+    # Calculates symMNF score.
     symnmf_score = silhouette_score(X_datapoints, labels_symnmf)
     print("nmf: {:.4f}".format(symnmf_score))
-
 
 def print_Kmeans_score(k, X_datapoints):
     """
@@ -195,6 +194,7 @@ def print_Kmeans_score(k, X_datapoints):
     """
     # Perform k-means algorithm
     labels_kmeans = kmeans_algorithm(k, X_datapoints.tolist())
+    # Calculates Kmeans score.
     kmeans_score = silhouette_score(X_datapoints, labels_kmeans)
     print("kmeans: {:.4f}".format(kmeans_score))
 

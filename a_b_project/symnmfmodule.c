@@ -1,6 +1,5 @@
-# define PY_SSIZE_T_CLEAN
-# include <Python.h>
-
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -189,7 +188,6 @@ static struct cord ** build_cords_matrix_from_pylist(PyObject *py_matrix, int n)
 
     return cords_matrix;
 }
-
 
 /* 
  * Run symNMF full algorithm from C and return the resulting H matrix.
