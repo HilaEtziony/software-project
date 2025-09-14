@@ -14,21 +14,7 @@ EPSILON = 0.0001
 MAX_ITER = 300
 
 ########################### FUNCTIONS ###########################
-
-"""
-def is_integer_string(num):
-    
-    Create the N Points from the given file
-    :param num: opened input file
-    :type num: string
-    :return: True if num is an integer, False otherwise
-    :rtype: bool
-    
-    try:
-        return float(num).is_integer()
-    except ValueError:
-        return False
-"""    
+  
 def is_converge(k, d, centroids, prev_centroids):
     """
     Check if all centroids change less than epsilon in compare to their previous value.
@@ -227,15 +213,6 @@ def main():
         # Load file into NumPy arrays
         X_datapoints = np.loadtxt(file_name, delimiter=',', ndmin=2)
 
-        # Check if k is an integer and 1 < k < n
-
-        """
-        if (is_integer_string(k) and 1 < int(float(k)) and int(float(k)) < n):
-            k = int(float(k))
-        else:
-            print("Invalid number of clusters!")
-            sys.exit(1)
-        """
         # Print the silhouette scores of the symNMF and k-means algorithms.
         print_symNMF_score(k, X_datapoints)
         print_Kmeans_score(k, X_datapoints)
