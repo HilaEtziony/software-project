@@ -85,7 +85,7 @@ function testSymnmfGaolsWithK() {
 function testSymnmfAllGoals() {
 	inputFileName=$1
 	expectedFileName=$2
-	k=${3:-2}
+	k=${3:-0}
 
 	if [[ "${SPEED}" != *"quick"* ]]; then
 		testSymnmfSingleGoal sym ${k} ${inputFileName} ${expectedFileName}_sym "c python" sym
