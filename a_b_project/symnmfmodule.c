@@ -210,7 +210,7 @@ static PyObject *symnmf(PyObject *Py_UNUSED(self), PyObject *args) {
     }
 
     /* Calling the C implementation */
-    symnmf_symnmf(k, H_matrix, W_matrix);
+    symnmf_symnmf(H_matrix, W_matrix);
     /* Conversion matrix from C to Python */
     result = cords_matrix_to_pylist(H_matrix, n, k);
     /* Memory cleanup */

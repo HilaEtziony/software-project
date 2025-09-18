@@ -704,10 +704,11 @@ static void run_symnmf_iterations(double **Wmat, double **Hmat,
 }
 
 /* Exported: SymNMF multiplicative with beta=0.5; updates H in-place. */
-void symnmf_symnmf(int k, struct cord **H, struct vector *W) {
-    int n_w, m_w, n ,i ;
+void symnmf_symnmf(struct cord **H, struct vector *W) {
+    int n_w, m_w, n ,i, k;
     double **Wmat, **Hmat, **WH, **HHt, **HHTH;
 
+    k = cords_len(H[0]);
     Wmat = vectors_to_dense(W, &n_w, &m_w);
     if (n_w == 0 || n_w != m_w) { free_dense(Wmat, n_w); return; }
     n = n_w;

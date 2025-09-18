@@ -25,6 +25,6 @@ struct cord *cords_from_array(const double *arr, int m);
 void symnmf_sym(struct cord **out_rows, struct vector *data_rows);
 void symnmf_ddg(struct cord **out_rows, struct vector *data_rows);
 void symnmf_norm(struct cord **out_rows, struct vector *data_rows);
-void symnmf_symnmf(int k, struct cord **H, struct vector *W);
+void symnmf_symnmf(struct cord **H, struct vector *W);
 
 #endif /* SYMNMF_H */
