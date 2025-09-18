@@ -2,8 +2,7 @@
 
 import sys
 import numpy as np
-from shared import initialize_H_Matrix
-from shared import check_and_get_k
+import shared
 import symnmfmodule
 
 ########################### FUNCTIONS ###########################
@@ -30,7 +29,7 @@ def algorithm(k, goal, vectors):
     # Call the relevant algorithm according to the given goal
     if goal == "symnmf":
         normalized_matrix = symnmfmodule.norm(vectors)
-        initial_metrix = initialize_H_Matrix(normalized_matrix, k)
+        initial_metrix = shared.initialize_H_Matrix(normalized_matrix, k)
         result_matrix = symnmfmodule.symnmf(k, initial_metrix, normalized_matrix)
     elif goal == "sym":
         result_matrix = symnmfmodule.sym(vectors)
@@ -47,7 +46,7 @@ def algorithm(k, goal, vectors):
 
 ########################### MAIN ###########################
 
-def main():
+if __name__ == "__main__":
     try:
         # Parse Arguments 
         if (len(sys.argv) == 4):
@@ -57,6 +56,9 @@ def main():
         else:
             print("An Error Has Occurred")
             sys.exit(1)
+        
+        # Check if file's name is string and ends with .txt, exit if not valid
+        shared.validate_filename(file_name)
 
         # Load files into NumPy arrays
         data = np.loadtxt(file_name, delimiter=',', ndmin=2)
@@ -65,7 +67,10 @@ def main():
         n, d = data.shape
 
         # Check if k is an integer and 1 < k < n, exit if not valid
-        k = check_and_get_k(k, n)
+        k = shared.check_and_get_k(k, n)
+
+        # Check if goal is valid, exit if not valid
+        shared.validate_goal(goal)
 
         # Call the algorithm function with the relevant goal
         algorithm(k, goal, data.tolist())
@@ -73,6 +78,3 @@ def main():
     except Exception:
         print("An Error Has Occurred")
         sys.exit(1)
-
-if __name__ == "__main__":
-    main()

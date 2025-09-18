@@ -57,3 +57,23 @@ def check_and_get_k(k, n):
     else:
         print("An Error Has Occurred")
         sys.exit(1)
+
+def validate_filename(file_name):
+    """
+    Validate if the file name is a string and ends with .txt, otherwise exit the program
+    :param file_name: input file name
+    :type file_name: str
+    """
+    if not (isinstance(file_name, str) and arg.endswith(".txt")):
+        print("An Error Has Occurred")
+        sys.exit(1)
+
+def validate_goal(goal):
+    """
+    Validate if the goal is one of the accepted values, otherwise exit the program
+    :param goal: input goal
+    :type goal: str
+    """
+    if goal not in ["symnmf", "sym", "ddg", "norm"]:
+        print("An Error Has Occurred")
+        sys.exit(1)

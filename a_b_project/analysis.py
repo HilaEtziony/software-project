@@ -6,8 +6,7 @@ import math
 import numpy as np
 from sklearn.metrics import silhouette_score
 import symnmfmodule
-from shared import initialize_H_Matrix
-from shared import check_and_get_k
+import shared
 
 ########################### CONSTS ###########################
 
@@ -176,12 +175,13 @@ def print_symNMF_score(k, X_datapoints):
     """
     # Perform symNMF algorithm
     normalized_matrix = symnmfmodule.norm(X_datapoints.tolist())
-    H_initial_metrix = initialize_H_Matrix(normalized_matrix, k)
+    H_initial_metrix = shared.initialize_H_Matrix(normalized_matrix, k)
     H_final_matrix = symnmfmodule.symnmf(k, H_initial_metrix, normalized_matrix)
 
     # Find every row's cluster at H metrix.
     labels_symnmf = [row.index(max(row)) for row in H_final_matrix]
     # Calculates symMNF score.
+    print(labels_symnmf) # --- IGNORE ---
     symnmf_score = silhouette_score(X_datapoints, labels_symnmf)
     print("nmf: {:.4f}".format(symnmf_score))
 
@@ -196,12 +196,13 @@ def print_Kmeans_score(k, X_datapoints):
     # Perform k-means algorithm
     labels_kmeans = kmeans_algorithm(k, X_datapoints.tolist())
     # Calculates Kmeans score.
+    print(labels_kmeans) # --- IGNORE ---
     kmeans_score = silhouette_score(X_datapoints, labels_kmeans)
     print("kmeans: {:.4f}".format(kmeans_score))
 
 ########################### MAIN ###########################
 
-def main():
+if __name__ == "__main__":
     try:
         # Parse Arguments 
         if (len(sys.argv) == 3):
@@ -211,6 +212,9 @@ def main():
             print("An Error Has Occurred")
             sys.exit(1)
 
+        # Check if file's name is string and ends with .txt, exit if not valid
+        shared.validate_filename(file_name)
+
         # Load file into NumPy arrays
         X_datapoints = np.loadtxt(file_name, delimiter=',', ndmin=2)
 
@@ -218,7 +222,7 @@ def main():
         n, d = X_datapoints.shape
 
         # Check if k is an integer and 1 < k < n, exit if not valid
-        k = check_and_get_k(k, n)
+        k = shared.check_and_get_k(k, n)
 
         # Print the silhouette scores of the symNMF and k-means algorithms.
         print_symNMF_score(k, X_datapoints)
@@ -227,6 +231,3 @@ def main():
     except Exception:
         print("An Error Has Occurred")
         sys.exit(1)
-
-if __name__ == "__main__":
-    main()
