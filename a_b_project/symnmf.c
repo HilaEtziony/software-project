@@ -264,7 +264,7 @@ static int read_csv_dense(const char *path, double ***out_M, int *out_n, int *ou
     FILE *f;
     const size_t BUFSZ = 1u << 20;
     char *buf;
-    int cap, n, m;
+    int cap, n, m,i;
     double **M;
     cap = 128; n = 0; m = -1;
 
@@ -286,9 +286,13 @@ static int read_csv_dense(const char *path, double ***out_M, int *out_n, int *ou
     }
     free(buf);
     fclose(f);
-    if (m <= 0 || n <= 0) { 
-        int i;
-        for (i = 0; i < n; i += 1) free(M[i]); free(M); return -1; }
+    if (m <= 0 || n <= 0) {
+    for (i = 0; i < n; i += 1) {
+        free(M[i]);
+    }
+    free(M);
+    return -1;
+}
     *out_M = M;
     *out_n = n;
     *out_m = m;
