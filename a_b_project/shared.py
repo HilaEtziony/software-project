@@ -64,7 +64,7 @@ def validate_filename(file_name):
     :param file_name: input file name
     :type file_name: str
     """
-    if not (isinstance(file_name, str) and arg.endswith(".txt")):
+    if not (isinstance(file_name, str) and file_name.endswith(".txt")):
         print("An Error Has Occurred")
         sys.exit(1)
 

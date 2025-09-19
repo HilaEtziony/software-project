@@ -126,7 +126,7 @@ def normalized_similarity_matrix(A: np.ndarray, D: np.ndarray):
 
 
 def initialize_H(W: np.ndarray, k: int, set_seed=False):
-    from symnmf import initialize_H_Matrix
+    from shared import initialize_H_Matrix
 
     if set_seed:
         np.random.seed(1234)

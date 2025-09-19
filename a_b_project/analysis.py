@@ -181,7 +181,6 @@ def print_symNMF_score(k, X_datapoints):
     # Find every row's cluster at H metrix.
     labels_symnmf = [row.index(max(row)) for row in H_final_matrix]
     # Calculates symMNF score.
-    print(labels_symnmf) # --- IGNORE ---
     symnmf_score = silhouette_score(X_datapoints, labels_symnmf)
     print("nmf: {:.4f}".format(symnmf_score))
 
@@ -196,7 +195,6 @@ def print_Kmeans_score(k, X_datapoints):
     # Perform k-means algorithm
     labels_kmeans = kmeans_algorithm(k, X_datapoints.tolist())
     # Calculates Kmeans score.
-    print(labels_kmeans) # --- IGNORE ---
     kmeans_score = silhouette_score(X_datapoints, labels_kmeans)
     print("kmeans: {:.4f}".format(kmeans_score))
 
@@ -223,7 +221,7 @@ if __name__ == "__main__":
 
         # Check if k is an integer and 1 < k < n, exit if not valid
         k = shared.check_and_get_k(k, n)
-
+        
         # Print the silhouette scores of the symNMF and k-means algorithms.
         print_symNMF_score(k, X_datapoints)
         print_Kmeans_score(k, X_datapoints)

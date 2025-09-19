@@ -3,8 +3,6 @@ from setuptools import setup, Extension
 module = Extension(
 'symnmfmodule',
 sources=['symnmfmodule.c', 'symnmf.c'],
-extra_compile_args=['-ansi', '-Wall', '-Wextra', '-Werror', '-pedantic-errors'],
-extra_link_args=['-lm'], 
 )
 
 setup(
