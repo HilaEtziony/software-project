@@ -89,7 +89,7 @@ def get_dimensions(vectors):
     d = len(vectors[0])
     return n, d
 
-def initialize_for_calc(k, d, n,):
+def kmeans_initialize_for_calc(k, d, n,):
     """
     Initialize the variables needed for the k-means calculation.
     :param k: number of clusters
@@ -123,8 +123,8 @@ def kmeans_assign_labels(k, centroids, vectors):
     n , d = get_dimensions(vectors)
     # The k-means algorithm.
     for count_iter in range(MAX_ITER):
-        count_assign_vectors, sum_vectors_assign, labels = initialize_for_calc(k, d, n)
-        # Find for every vector the closest cetreoids.
+        count_assign_vectors, sum_vectors_assign, labels = kmeans_initialize_for_calc(k, d, n)
+        # Find for every vector the closest centroid.
         for i in range(n):
             min_delta = float('inf')
             min_center = 0
@@ -221,7 +221,7 @@ if __name__ == "__main__":
 
         # Check if k is an integer and 1 < k < n, exit if not valid
         k = shared.check_and_get_k(k, n)
-        
+
         # Print the silhouette scores of the symNMF and k-means algorithms.
         print_symNMF_score(k, X_datapoints)
         print_Kmeans_score(k, X_datapoints)

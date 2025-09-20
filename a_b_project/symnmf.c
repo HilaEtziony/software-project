@@ -8,7 +8,6 @@
 #define MAX_ITER 300
 #define TOL 1e-4
 
-
 /* Count cords (elements) in a cord linked list. */
 static int cords_len(struct cord *c) {
     int len;
@@ -31,7 +30,6 @@ static int vectors_len(struct vector *v) {
     return len;
 }
 
-
 /* Print the exact error and exit — required by checker. */
 static void die(void) {
     printf("An Error Has Occurred\n");
@@ -48,7 +46,6 @@ static char *my_strdup(const char *s) {
     memcpy(p, s, n);
     return p;
 }
-
 
 /* Build a cord list from a dense row of length m. (exported in .h) */
 struct cord *cords_from_array(const double *arr, int m) {
@@ -186,7 +183,6 @@ void free_dense(double **M, int n) {
     free(M);
 }
 
-
 /* Free a cord linked list. */
 void free_cords(struct cord *head) {
     struct cord *tmp;
@@ -207,7 +203,6 @@ void free_vectors(struct vector *head) {
         free(tmp);
     }
 }
-
 
 /* Return 1 if a line has only whitespace. */
 static int is_only_ws(const char *buf) {
@@ -389,7 +384,6 @@ static int read_stdin_as_vectors(struct vector **out_head, int *out_n, int *out_
     return 0;
 }
 
-
 /* Print an array of n rows (cord lists), each of length m, with 4 decimals. */
 static void print_rows(struct cord **rows, int n, int m) {
     int i, j;
@@ -414,7 +408,6 @@ static void print_rows(struct cord **rows, int n, int m) {
         }
     }
 }
-
 
 /* Allocate n×n matrix; clear=1 uses calloc, else malloc. */
 static double **alloc_square(int n, int clear) {
@@ -594,7 +587,6 @@ static void W_H(double **W, double **H, double **WH, int n, int k) {
     }
 }
 
-
 /* HHt = H * H^T. */
 static void H_H_T(double **H, double **HHt, int n, int k) {
     int ii, jj, r;
@@ -613,7 +605,6 @@ static void H_H_T(double **H, double **HHt, int n, int k) {
     }
 }
 
-
 /* HHTH = (HHt) * H. */
 static void H_H_T_H(double **HHt, double **H, double **HHTH, int n, int k) {
     int i, j, r;
@@ -631,7 +622,6 @@ static void H_H_T_H(double **HHt, double **H, double **HHTH, int n, int k) {
         }
     }
 }
-
 
 /* One multiplicative H update step; returns squared Frobenius change. */
 static double update_H_step(double **H, double **WH, double **HHTH, int n, int k) {
@@ -671,7 +661,6 @@ static double **cords_H_to_dense(struct cord **H, int n, int k) {
     return Hmat;
 }
 
-
 /* Allocate SymNMF intermediates (WH, HHt, HHTH). */
 static int alloc_intermediates(int n, int k, double ***WH, double ***HHt, double ***HHTH) {
     /* Allocate intermediate matrices:
@@ -694,7 +683,6 @@ static int alloc_intermediates(int n, int k, double ***WH, double ***HHt, double
     }
     return 0;
 }
-
 
 /* Free SymNMF intermediates. */
 static void free_intermediates(double **WH, double **HHt, double **HHTH, int n) {

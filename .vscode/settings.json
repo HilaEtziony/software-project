@@ -1,7 +1,13 @@
 {
     "files.associations": {
         "type_traits": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "ratio": "c",
+        "system_error": "c",
+        "array": "c",
+        "functional": "c",
+        "tuple": "c",
+        "utility": "c"
     },
     "python-envs.pythonProjects": [
         {

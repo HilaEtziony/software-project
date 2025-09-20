@@ -14,8 +14,8 @@ static struct cord * build_vector_from_list(PyObject *py_list) {
     struct cord *head = NULL, *curr = NULL, *new_cord = NULL;
     PyObject* item = NULL;
     double val;
-
     d = PyObject_Length(py_list);
+    if (d <= 0) return NULL;
     for (i = 0; i < d; i++) {
         item = PyList_GetItem(py_list, i);
         if (!item) {  
@@ -25,6 +25,7 @@ static struct cord * build_vector_from_list(PyObject *py_list) {
         val = PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {  
             free_cords(head);
+            PyErr_Clear();
             return NULL;
         }
         new_cord = (struct cord*)malloc(sizeof(struct cord));
@@ -55,14 +56,23 @@ static struct vector * build_vectors_linked_list(PyObject *py_vectors) {
     PyObject* py_vec = NULL;
 
     n = PyObject_Length(py_vectors);
+    if (n <= 0) return NULL;
     for (i = 0; i < n; i++) {
         py_vec = PyList_GetItem(py_vectors, i);
+        if(!py_vec) {
+            free_vectors(head);
+            return NULL;
+        }
         new_vec = (struct vector*)malloc(sizeof(struct vector));
         if (!new_vec) {
             free_vectors(head);
             return NULL;
         }
         new_vec->cords = build_vector_from_list(py_vec);
+        if(!new_vec->cords){
+            free_vectors(head);
+            return NULL;
+        }
         new_vec->next = NULL;
         if (head == NULL) {
             head = new_vec;
@@ -79,19 +89,24 @@ static struct vector * build_vectors_linked_list(PyObject *py_vectors) {
  * Builds a Python list which represents a vector, from linked list of cords (elements in vector).
  * Returns a pointer to the created Python list.
  */
-static PyObject *build_pylist_from_vector(struct cord *c, int d) {
+static PyObject *build_pylist_from_vector(struct cord *cords, int d) {
     int i;
     PyObject *list = NULL, *python_float = NULL;
 
     list = PyList_New(d);
+    if (!list) return NULL;
     for (i = 0; i < d; ++i){
-        python_float = PyFloat_FromDouble(c->value);
+        python_float = PyFloat_FromDouble(cords->value);
         if (!python_float) {
             Py_DECREF(list);
             return NULL;
         }
-        PyList_SetItem(list, i, python_float);
-        c = c->next;
+        if (PyList_SetItem(list, i, python_float) < 0) {
+            Py_DECREF(python_float);
+            Py_DECREF(list);
+            return NULL;
+        }
+        cords = cords->next;
     }
     return list;
 }
@@ -100,18 +115,23 @@ static PyObject *build_pylist_from_vector(struct cord *c, int d) {
  * Convert C matrix to Python list of lists.
  * Returns a pointer to the created Python list of lists.
  */
-static PyObject *cords_matrix_to_pylist(struct cord **matrix, int n, int m) {
-    PyObject *result = PyList_New(n);
-    PyObject *c = NULL;
+static PyObject *matrix_to_pylist(struct cord **matrix, int n, int m) {
+    PyObject *item = NULL, *result = NULL;
     int i;
+
+    result = PyList_New(n);
     if (!result) return NULL;
     for (i = 0; i < n; i++) {
-        c = build_pylist_from_vector(matrix[i], m);
-        if (!c) {
+        item = build_pylist_from_vector(matrix[i], m);
+        if (!item) {
             Py_DECREF(result);
             return NULL;
         }
-        PyList_SetItem(result, i, c);
+        if (PyList_SetItem(result, i, item) < 0) {
+            Py_DECREF(item);
+            Py_DECREF(result);
+            return NULL;
+        }
     }
     return result;
 }
@@ -136,8 +156,8 @@ static void free_matrix_and_vectors(struct cord **matrix, int n, struct vector *
 static PyObject *goal(PyObject *args, void (*c_func_goal)(struct cord **, struct vector *)) {
     PyObject *py_X_datapoints = NULL, *result = NULL;
     int n;
-    struct vector* X_datapoints = NULL;
-    struct cord** matrix = NULL;
+    struct vector *X_datapoints = NULL;
+    struct cord **matrix = NULL;
 
     /* Parse Args */
     if (!PyArg_ParseTuple(args, "O", &py_X_datapoints)) return NULL;
@@ -156,8 +176,8 @@ static PyObject *goal(PyObject *args, void (*c_func_goal)(struct cord **, struct
 
     /* Calling the C implementation */
     c_func_goal(matrix, X_datapoints);
-    /* Conversion matrix from C to Python */
-    result = cords_matrix_to_pylist(matrix, n, n);
+    /* Conversion matrix from C to Python (there is no need to check result because the memory cleanup happens next anyway) */
+    result = matrix_to_pylist(matrix, n, n);
     /* Memory cleanup */
     free_matrix_and_vectors(matrix, n, X_datapoints);
 
@@ -169,14 +189,22 @@ static PyObject *goal(PyObject *args, void (*c_func_goal)(struct cord **, struct
  * Returns a pointer to the created array of vectors.
  */
 static struct cord ** build_cords_matrix_from_pylist(PyObject *py_matrix, int n) {
-    PyObject *py_c = NULL;
+    PyObject *py_cords_list = NULL;
     int i, j;
+
     struct cord **cords_matrix = (struct cord **)calloc(n, sizeof(struct cord *));
     if (!cords_matrix) return NULL;
 
     for (i = 0; i < n; i++) {
-        py_c = PyList_GetItem(py_matrix, i);
-        cords_matrix[i] = build_vector_from_list(py_c);
+        py_cords_list = PyList_GetItem(py_matrix, i);
+        if(py_cords_list == NULL) {
+            for (j = 0; j < i; j++) {
+                free_cords(cords_matrix[j]);
+            }
+            free(cords_matrix);
+            return NULL;
+        }
+        cords_matrix[i] = build_vector_from_list(py_cords_list);
         if (cords_matrix[i] == NULL) {
             for (j = 0; j < i; j++) {
                 free_cords(cords_matrix[j]);
@@ -203,6 +231,7 @@ static PyObject *symnmf(PyObject *Py_UNUSED(self), PyObject *args) {
     if (n <= 0) return NULL;
 
     W_matrix = build_vectors_linked_list(py_W_matrix);
+    if (!W_matrix) return NULL;
     H_matrix = build_cords_matrix_from_pylist(py_H_matrix, n);
     if (!H_matrix) {
         free_vectors(W_matrix);
@@ -211,8 +240,8 @@ static PyObject *symnmf(PyObject *Py_UNUSED(self), PyObject *args) {
 
     /* Calling the C implementation */
     symnmf_symnmf(H_matrix, W_matrix);
-    /* Conversion matrix from C to Python */
-    result = cords_matrix_to_pylist(H_matrix, n, k);
+    /* Conversion matrix from C to Python (there is no need to check result because the memory cleanup happens next anyway) */
+    result = matrix_to_pylist(H_matrix, n, k);
     /* Memory cleanup */
     free_matrix_and_vectors(H_matrix, n, W_matrix);
 
