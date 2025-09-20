@@ -34,7 +34,7 @@ static int vectors_len(struct vector *v) {
 
 /* Print the exact error and exit — required by checker. */
 static void die(void) {
-    fprintf(stderr, "An Error Has Occurred\n");
+    printf("An Error Has Occurred\n");
     exit(1);
 }
 
@@ -231,21 +231,39 @@ static int count_csv_columns(const char *buf) {
 
 /* Parse a CSV line into a new row of size m. */
 static int parse_csv_row(const char *line_in, double **out_row, int m) {
-    char *line, *tok;
+    char *line, *tok, *endp;
     int j;
+    double v;
+
     line = my_strdup(line_in);
     if (line == NULL) return -1;
+
     *out_row = (double *)malloc(m * sizeof(**out_row));
     if (*out_row == NULL) { free(line); return -1; }
+
     tok = strtok(line, ",\r\n");
     j = 0;
     while (tok != NULL && j < m) {
-        (*out_row)[j] = strtod(tok, NULL);
+        /* Convert token to double and verify it is fully consumed. */
+        v = strtod(tok, &endp);
+
+        /* Skip trailing spaces/tabs after the numeric part. */
+        while (*endp == ' ' || *endp == '\t') endp++;
+
+        /* Reject empty tokens or tokens with extra characters. */
+        if (endp == tok || *endp != '\0') {
+            free(*out_row);
+            free(line);
+            return -1;
+        }
+
+        (*out_row)[j] = v;
         j += 1;
         tok = strtok(NULL, ",\r\n");
     }
+
+    if (j != m) { free(*out_row); free(line); return -1; }
     free(line);
-    if (j != m) { free(*out_row); return -1; }
     return 0;
 }
 
@@ -264,7 +282,7 @@ static int read_csv_dense(const char *path, double ***out_M, int *out_n, int *ou
     FILE *f;
     const size_t BUFSZ = 1u << 20;
     char *buf;
-    int cap, n, m,i;
+    int cap, n, m;
     double **M;
     cap = 128; n = 0; m = -1;
 
@@ -280,19 +298,13 @@ static int read_csv_dense(const char *path, double ***out_M, int *out_n, int *ou
     while (fgets(buf, (int)BUFSZ, f) != NULL) {
         if (is_only_ws(buf)) continue;
         if (m < 0) m = count_csv_columns(buf);
-        if (parse_csv_row(buf, &M[n], m) != 0) { free(buf); fclose(f); return -1; }
+        if (parse_csv_row(buf, &M[n], m) != 0) {free_dense(M, n); free(buf); fclose(f); return -1; }
         n += 1;
-        if (n == cap && grow_matrix(&M, &cap) != 0) { free(buf); fclose(f); return -1; }
+        if (n == cap && grow_matrix(&M, &cap) != 0) {free_dense(M, n); free(buf); fclose(f); return -1; }
     }
     free(buf);
     fclose(f);
-    if (m <= 0 || n <= 0) {
-    for (i = 0; i < n; i += 1) {
-        free(M[i]);
-    }
-    free(M);
-    return -1;
-}
+    if (m <= 0 || n <= 0) {free_dense(M, n); return -1; }
     *out_M = M;
     *out_n = n;
     *out_m = m;
@@ -528,7 +540,7 @@ static double **build_W_from_A_deg(double **A, const double *deg, int n) {
     int i, j;
     double **W;
     double di, dj;
-    W = alloc_square(n, 0);   /* במקום malloc+לולאות */
+    W = alloc_square(n, 0);   
     if (W == NULL) return NULL;
     for (i = 0; i < n; i += 1) {
         di = (deg[i] > 0.0) ? 1.0 / sqrt(deg[i]) : 0.0;
