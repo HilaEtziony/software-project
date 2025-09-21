@@ -176,7 +176,7 @@ def print_symNMF_score(k, X_datapoints):
     # Perform symNMF algorithm
     normalized_matrix = symnmfmodule.norm(X_datapoints.tolist())
     H_initial_metrix = shared.initialize_H_Matrix(normalized_matrix, k)
-    H_final_matrix = symnmfmodule.symnmf(k, H_initial_metrix, normalized_matrix)
+    H_final_matrix = symnmfmodule.symnmf(H_initial_metrix, normalized_matrix)
 
     # Find every row's cluster at H metrix.
     labels_symnmf = [row.index(max(row)) for row in H_final_matrix]

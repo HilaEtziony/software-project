@@ -452,7 +452,7 @@ def test_symnmf_lib():
 
     goal_name = format_goal_name("symnmf")
     initial_H, final_H_target = symnmf_main(np.array(W), k)
-    final_H = np.array(symnmf.symnmf(k, initial_H.tolist(), W.tolist()))
+    final_H = np.array(symnmf.symnmf(initial_H.tolist(), W.tolist()))
     if not np.all(np.linalg.norm(final_H_target - final_H, axis=1) < EPS):
         print_red(err_msg.format(goal_name))
         return False

@@ -30,7 +30,7 @@ def algorithm(k, goal, vectors):
     if goal == "symnmf":
         normalized_matrix = symnmfmodule.norm(vectors)
         initial_metrix = shared.initialize_H_Matrix(normalized_matrix, k)
-        result_matrix = symnmfmodule.symnmf(k, initial_metrix, normalized_matrix)
+        result_matrix = symnmfmodule.symnmf(initial_metrix, normalized_matrix)
     elif goal == "sym":
         result_matrix = symnmfmodule.sym(vectors)
     elif goal == "ddg":

@@ -226,7 +226,7 @@ static PyObject *symnmf(PyObject *Py_UNUSED(self), PyObject *args) {
     struct vector *W_matrix = NULL;
     struct cord **H_matrix = NULL;
 
-    if (!PyArg_ParseTuple(args, "iOO", &k, &py_H_matrix, &py_W_matrix)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO", &py_H_matrix, &py_W_matrix)) return NULL;
     n = PyObject_Length(py_H_matrix);
     if (n <= 0) return NULL;
 
@@ -240,6 +240,8 @@ static PyObject *symnmf(PyObject *Py_UNUSED(self), PyObject *args) {
 
     /* Calling the C implementation */
     symnmf_symnmf(H_matrix, W_matrix);
+    /* Get number of cords of a vector in H*/
+    k = cords_len(H_matrix[0]);
     /* Conversion matrix from C to Python (there is no need to check result because the memory cleanup happens next anyway) */
     result = matrix_to_pylist(H_matrix, n, k);
     /* Memory cleanup */

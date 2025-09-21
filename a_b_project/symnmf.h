@@ -15,6 +15,7 @@ struct vector {
 
 /* -------- exported helpers -------- */
 
+int cords_len(struct cord *c);
 void free_cords(struct cord *head);
 void free_vectors(struct vector *head);
 void free_dense(double **M, int n);

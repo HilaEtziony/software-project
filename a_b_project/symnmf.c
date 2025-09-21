@@ -9,7 +9,7 @@
 #define TOL 1e-4
 
 /* Count cords (elements) in a cord linked list. */
-static int cords_len(struct cord *c) {
+int cords_len(struct cord *c) {
     int len;
     len = 0;
     while (c != NULL) {
