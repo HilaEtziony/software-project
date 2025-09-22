@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
         # Check if k is an integer and 1 < k < n, exit if not valid
         k = shared.check_and_get_k(k, n)
-
+        #k = int(k)
         # Check if goal is valid, exit if not valid
         shared.validate_goal(goal)
 

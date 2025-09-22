@@ -175,7 +175,7 @@ static struct vector *rows_to_vector(struct cord **rows, int n) {
     return head;
 }
 
-/* Free an n-row dense matrix. (exported in .h) */
+/* Free an n-row matrix. (exported in .h) */
 void free_matrix(double **M, int n) {
     int i;
     if (M == NULL) return;
@@ -409,14 +409,14 @@ static void print_rows(struct cord **rows, int n, int m) {
     }
 }
 
-/* Allocate n×n matrix; clear=1 uses calloc, else malloc. */
-static double **alloc_square(int n, int clear) {
+/* Allocate n×n matrix; is_calloc=1 uses calloc, else malloc. */
+static double **alloc_square(int n, int is_calloc) {
     int i ,r;
     double **M;
     M = (double **)malloc(n * sizeof(*M));
     if (M == NULL) return NULL;
     for (i = 0; i < n; i += 1) {
-        M[i] = clear ? (double *)calloc((size_t)n, sizeof(**M)) : (double *)malloc(n * sizeof(**M));
+        M[i] = is_calloc ? (double *)calloc((size_t)n, sizeof(**M)) : (double *)malloc(n * sizeof(**M));
         if (M[i] == NULL) {
             for (r = 0; r < i; r += 1) free(M[r]);
             free(M);
@@ -426,7 +426,7 @@ static double **alloc_square(int n, int clear) {
     return M;
 }
 
-/* Compute A[i][*] (j>i) using Gaussian kernel exp(-||xi-xj||^2/2). */
+/* Compute A[i][j] (j>i) using exp(-||xi-xj||^2/2). */
 static void build_similarity_row(double **A, double **X, int n, int m, int i) {
     int j, r;
     double s, df, v;
@@ -510,7 +510,7 @@ static double **build_A_from_vectors(struct vector *data_rows, int *out_n) {
     return Amat;
 }
 
-/* Exported: build D internally from X. */
+/* Exported: build D internally from data_rows. */
 void symnmf_ddg(struct cord **out_rows, struct vector *data_rows) {
     int n;
     double **Amat,**D;

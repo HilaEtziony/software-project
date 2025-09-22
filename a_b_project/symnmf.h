@@ -18,7 +18,7 @@ struct vector {
 int cords_len(struct cord *c);
 void free_cords(struct cord *head);
 void free_vectors(struct vector *head);
-void free_dense(double **M, int n);
+void free_matrix(double **M, int n);
 struct cord *cords_from_array(const double *arr, int m);
 
 /* -------- exported algorithms -------- */
