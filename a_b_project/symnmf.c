@@ -278,7 +278,7 @@ static int parse_txt_row(const char *line_in, double **out_row, int m) {
 static int grow_matrix(double ***M, int *cap) {
     double **tmp;
     *cap *= 2;
-    tmp = (double **)realloc(*M, (size_t)(*cap) * sizeof(*tmp));  /* <-- שונה */
+    tmp = (double **)realloc(*M, (size_t)(*cap) * sizeof(*tmp));  
     if (tmp == NULL) return -1;
     *M = tmp;
     return 0;
