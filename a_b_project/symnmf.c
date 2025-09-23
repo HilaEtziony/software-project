@@ -3,6 +3,8 @@
 #include <string.h>
 #include <math.h>
 #include "symnmf.h"
+#include <ctype.h>
+
 
 #define TINY_POSITIVE 1e-9
 #define MAX_ITER 300
@@ -204,6 +206,16 @@ void free_vectors(struct vector *head) {
     }
 }
 
+/* Return 1 if path ends with ".txt" (case-insensitive). */
+static int has_txt_extension(const char *path) {
+    const char *dot = strrchr(path, '.');
+    return dot &&
+           tolower((unsigned char)dot[1]) == 't' &&
+           tolower((unsigned char)dot[2]) == 'x' &&
+           tolower((unsigned char)dot[3]) == 't' &&
+           dot[4] == '\0';
+}
+
 /* Return 1 if a line has only whitespace. */
 static int is_only_ws(const char *buf) {
     const char *p;
@@ -266,121 +278,98 @@ static int parse_txt_row(const char *line_in, double **out_row, int m) {
 static int grow_matrix(double ***M, int *cap) {
     double **tmp;
     *cap *= 2;
-    tmp = (double **)realloc(*M, (*cap) * sizeof(**M));
+    tmp = (double **)realloc(*M, (size_t)(*cap) * sizeof(*tmp));  /* <-- שונה */
     if (tmp == NULL) return -1;
     *M = tmp;
     return 0;
 }
 
+/* Ensure *buf has at least 'need' bytes (realloc; updates *buf). */
+static int ensure_capacity(char **buf, size_t *cap, size_t need) {
+    size_t new_cap;
+    char *tmp;
+
+    if (need <= *cap) return 0;
+
+    new_cap = (*cap == 0) ? 512 : *cap;
+    while (new_cap < need) {
+        if (new_cap > (size_t)(~0u) / 2) { new_cap = need; break; }
+        new_cap *= 2;
+    }
+
+    tmp = (char *)realloc(*buf, new_cap);
+    if (!tmp) return -1;
+
+    *buf = tmp;
+    *cap = new_cap;
+    return 0;
+}
+
+/* Read a full line from f. */
+static char *readline_dynamic(FILE *f) {
+    char *buf = NULL;
+    size_t cap = 0, len = 0;
+    char chunk[4096];
+
+    for (;;) {
+        if (fgets(chunk, (int)sizeof(chunk), f) == NULL) {
+            if (len == 0) { free(buf); return NULL; }
+            if (ensure_capacity(&buf, &cap, len + 1) != 0) { free(buf); return NULL; }
+            buf[len] = '\0';
+            return buf;
+        }
+
+        {
+            size_t tlen = strlen(chunk);
+            if (ensure_capacity(&buf, &cap, len + tlen + 1) != 0) { free(buf); return NULL; }
+            memcpy(buf + len, chunk, tlen);
+            len += tlen;
+            buf[len] = '\0';
+        }
+
+        if (len > 0 && buf[len - 1] == '\n') return buf;
+    }
+}
+
 /* Read txt into matrix M, setting n and m. 0 on success, -1 on failure. */
 static int read_txt(const char *path, double ***out_M, int *out_n, int *out_m) {
     FILE *f;
-    const size_t BUFSZ = 1u << 20;
-    char *buf;
-    int cap, n, m;
+    int cap, n, m,cols;
     double **M;
+    char *line;
+    if (!has_txt_extension(path)) return -1;
     cap = 128; n = 0; m = -1;
 
     f = fopen(path, "r");
     if (f == NULL) return -1;
 
-    buf = (char *)malloc(BUFSZ);
-    if (buf == NULL) { fclose(f); return -1; }
-
     M = (double **)malloc(cap * sizeof(*M));
-    if (M == NULL) { free(buf); fclose(f); return -1; }
+    if (M == NULL) { fclose(f); return -1; }
 
-    while (fgets(buf, (int)BUFSZ, f) != NULL) {
-        if (is_only_ws(buf)) continue;
-        if (m < 0) m = count_txt_columns(buf);
-        if (parse_txt_row(buf, &M[n], m) != 0) {free_matrix(M, n); free(buf); fclose(f); return -1; }
+    while ((line = readline_dynamic(f)) != NULL) {
+        if (is_only_ws(line)) {
+             free(line); free_matrix(M, n); fclose(f); return -1; }
+        
+        cols = count_txt_columns(line);
+        if (m < 0) {
+            m = cols;
+        }else if (cols != m){
+            free(line); free_matrix(M, n); fclose(f); return -1;}
+        
+        if (parse_txt_row(line, &M[n], m) != 0) {
+            free(line); free_matrix(M, n); fclose(f); return -1;
+        }
+        free(line);
         n += 1;
-        if (n == cap && grow_matrix(&M, &cap) != 0) {free_matrix(M, n); free(buf); fclose(f); return -1; }
+        if (n == cap && grow_matrix(&M, &cap) != 0) {
+            free_matrix(M, n); fclose(f); return -1;
+        }
     }
-    free(buf);
     fclose(f);
-    if (m <= 0 || n <= 0) {free_matrix(M, n); return -1; }
+    if (m <= 0 || n <= 0) { free_matrix(M, n); return -1; }
     *out_M = M;
     *out_n = n;
     *out_m = m;
-    return 0;
-}
-
-/* Initialize a fresh vector and cord nodes for stdin reading. */
-static int init_stdin_nodes(struct vector **head_vec, struct vector **curr_vec,
-                            struct cord **head_cord, struct cord **curr_cord) {
-    *head_vec = (struct vector *)malloc(sizeof(struct vector));
-    if (!*head_vec) return -1;
-    (*head_vec)->next = NULL;
-    (*head_vec)->cords = NULL;
-    *curr_vec = *head_vec;
-    *head_cord = (struct cord *)malloc(sizeof(struct cord));
-    if (!*head_cord) { free(*head_vec); return -1; }
-    (*head_cord)->next = NULL;
-    (*head_cord)->value = 0.0;
-    *curr_cord = *head_cord;
-    return 0;
-}
-
-/* Handle end-of-line: close current vector and start a new one. */
-static int handle_newline(struct vector **curr_vec, struct cord **head_cord,
-                          struct cord **curr_cord, struct vector **prev_vec) {
-    (*curr_vec)->cords = *head_cord;
-    *prev_vec = *curr_vec;
-    (*curr_vec)->next = (struct vector *)malloc(sizeof(struct vector));
-    if (!(*curr_vec)->next) return -1;
-    *curr_vec = (*curr_vec)->next;
-    (*curr_vec)->next = NULL;
-    (*curr_vec)->cords = NULL;
-    *head_cord = (struct cord *)malloc(sizeof(struct cord));
-    if (!*head_cord) return -1;
-    *curr_cord = *head_cord;
-    (*curr_cord)->next = NULL;
-    (*curr_cord)->value = 0.0;
-    return 0;
-}
-
-/* Handle a comma: extend current cord list. */
-static int handle_comma(struct cord **curr_cord) {
-    (*curr_cord)->next = (struct cord *)malloc(sizeof(struct cord));
-    if (!(*curr_cord)->next) return -1;
-    *curr_cord = (*curr_cord)->next;
-    (*curr_cord)->next = NULL;
-    (*curr_cord)->value = 0.0;
-    return 0;
-}
-
-/* Read stdin as CSV into linked-list vectors. 0 on success, -1 on failure. */
-static int read_stdin_as_vectors(struct vector **out_head, int *out_n, int *out_m) {
-    struct vector *head_vec, *curr_vec, *prev_vec;
-    struct cord   *head_cord, *curr_cord;
-    int n;
-    double val;
-    char ch;
-
-    if (init_stdin_nodes(&head_vec, &curr_vec, &head_cord, &curr_cord) != 0) return -1;
-    prev_vec = NULL;
-    n = 0;
-    while (scanf("%lf%c", &val, &ch) == 2) {
-        curr_cord->value = val;
-        if (ch == '\n') {
-            if (handle_newline(&curr_vec, &head_cord, &curr_cord, &prev_vec) != 0) {
-                 free_vectors(head_vec); 
-                 return -1; }
-            n += 1;
-        } else {
-            if (handle_comma(&curr_cord) != 0) {
-                 free_vectors(head_vec); 
-                 return -1; }
-        }
-    }
-    if (n == 0) { free(head_cord); free(head_vec); return -1; }
-    free(head_cord);
-    free(curr_vec);
-    prev_vec->next = NULL;
-    *out_head = head_vec;
-    *out_n = n;
-    *out_m = cords_len(head_vec->cords);
     return 0;
 }
 
@@ -739,26 +728,16 @@ void symnmf_symnmf(struct cord **H, struct vector *W) {
     free_matrix(Wmat, n);
 }
 
-/* ================================================== */
-
-/* Load input vectors either from txt path or stdin ("-"). */
+/* Load input vectors from txt path. */
 static int load_input(const char *path, struct vector **out_vecs, double ***out_dense,
-                      int *out_n, int *out_d, int *from_stdin) {
+                      int *out_n, int *out_d) {
     double **X_dense;
     int n, d;
     struct vector *X_vecs;
-    if (strcmp(path, "-") == 0) {
-        *from_stdin = 1;
-        if (read_stdin_as_vectors(&X_vecs, &n, &d) != 0) return -1;
-        *out_vecs = X_vecs;
-        *out_dense = NULL;
-        *out_n = n;
-        *out_d = d;
-        return 0;
-    }
+
     if (read_txt(path, &X_dense, &n, &d) != 0) return -1;
+
     X_vecs = dense_to_vectors(X_dense, n, d);
-    *from_stdin = 0;
     *out_vecs = X_vecs;
     *out_dense = X_dense;
     *out_n = n;
@@ -782,20 +761,24 @@ static void run_goal_and_print(const char *goal, struct vector *X_vecs, int n) {
     free(rows);
 }
 
-/* Simple CLI wrapper. Usage: ./symnmf <goal> <path or -> */
+/* Simple CLI wrapper. Usage: ./symnmf <goal> <path> */
 int main(int argc, char **argv) {
     const char *goal, *path;
-    int n, d, from_stdin;
+    int n, d;
     struct vector *X_vecs;
     double **X_dense;
+
     if (argc != 3) die();
     goal = argv[1];
     path = argv[2];
+
     X_vecs = NULL;
     X_dense = NULL;
-    if (load_input(path, &X_vecs, &X_dense, &n, &d, &from_stdin) != 0) die();
+
+    if (load_input(path, &X_vecs, &X_dense, &n, &d) != 0) die();
     run_goal_and_print(goal, X_vecs, n);
+
     free_vectors(X_vecs);
-    if (!from_stdin && X_dense != NULL) free_matrix(X_dense, n);
+    if (X_dense != NULL) free_matrix(X_dense, n);
     return 0;
 }
