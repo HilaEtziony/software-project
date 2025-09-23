@@ -137,14 +137,21 @@ static PyObject *matrix_to_pylist(struct cord **matrix, int n, int m) {
 }
 
 /*
- * Free matrix and vectors memory
+ * Free cords matrix.
  */
-static void free_matrix_and_vectors(struct cord **matrix, int n, struct vector *vectors) {
+static void free_cords_matrix(struct cord **matrix, int n) {
     int i;
     for (i = 0; i < n; i++) {
         free_cords(matrix[i]);
     }
     free(matrix);
+}
+
+/*
+ * Free cords matrix and vectors memory
+ */
+static void free_cords_matrix_and_vectors(struct cord **matrix, int n, struct vector *vectors) {
+    free_cords_matrix(matrix, n);
     free_vectors(vectors);
 }
 
@@ -179,7 +186,7 @@ static PyObject *goal(PyObject *args, void (*c_func_goal)(struct cord **, struct
     /* Conversion matrix from C to Python (there is no need to check result because the memory cleanup happens next anyway) */
     result = matrix_to_pylist(matrix, n, n);
     /* Memory cleanup */
-    free_matrix_and_vectors(matrix, n, X_datapoints);
+    free_cords_matrix_and_vectors(matrix, n, X_datapoints);
 
     return result;
 }
@@ -190,7 +197,7 @@ static PyObject *goal(PyObject *args, void (*c_func_goal)(struct cord **, struct
  */
 static struct cord ** build_cords_matrix_from_pylist(PyObject *py_matrix, int n) {
     PyObject *py_cords_list = NULL;
-    int i, j;
+    int i;
 
     struct cord **cords_matrix = (struct cord **)calloc(n, sizeof(struct cord *));
     if (!cords_matrix) return NULL;
@@ -198,18 +205,12 @@ static struct cord ** build_cords_matrix_from_pylist(PyObject *py_matrix, int n)
     for (i = 0; i < n; i++) {
         py_cords_list = PyList_GetItem(py_matrix, i);
         if(py_cords_list == NULL) {
-            for (j = 0; j < i; j++) {
-                free_cords(cords_matrix[j]);
-            }
-            free(cords_matrix);
+            free_cords_matrix(cords_matrix, i);
             return NULL;
         }
         cords_matrix[i] = build_vector_from_list(py_cords_list);
         if (cords_matrix[i] == NULL) {
-            for (j = 0; j < i; j++) {
-                free_cords(cords_matrix[j]);
-            }
-            free(cords_matrix);
+            free_cords_matrix(cords_matrix, i);
             return NULL;
         }
     }
@@ -245,7 +246,7 @@ static PyObject *symnmf(PyObject *Py_UNUSED(self), PyObject *args) {
     /* Conversion matrix from C to Python (there is no need to check result because the memory cleanup happens next anyway) */
     result = matrix_to_pylist(H_matrix, n, k);
     /* Memory cleanup */
-    free_matrix_and_vectors(H_matrix, n, W_matrix);
+    free_cords_matrix_and_vectors(H_matrix, n, W_matrix);
 
     return result;
 }
