@@ -2,22 +2,37 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 #include "symnmf.h"
-#include <ctype.h>
 
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)-1)
+#endif
 
 #define TINY_POSITIVE 1e-9
 #define MAX_ITER 300
 #define EPS 1e-4
 
+
+static void *xmalloc_size(size_t count, size_t elem) {
+    if (count != 0 && elem > SIZE_MAX / count) {
+        return NULL; /* overflow */
+    }
+    return malloc(count * elem);
+}
+
+static void *xcalloc_size(size_t count, size_t elem) {
+    if (count != 0 && elem > SIZE_MAX / count) {
+        return NULL; /* overflow */
+    }
+    return calloc(count, elem);
+}
+
 /* Count cords (elements) in a cord linked list. */
 int cords_len(struct cord *c) {
     int len;
     len = 0;
-    while (c != NULL) {
-        len += 1;
-        c = c->next;
-    }
+    while (c != NULL) { len += 1; c = c->next; }
     return len;
 }
 
@@ -105,10 +120,10 @@ static struct vector *dense_to_vectors(double **M, int n, int m) {
 static double **alloc_dense(int n, int m) {
     int i, r;
     double **M;
-    M = (double **)malloc(n * sizeof(*M));
+    M = (double **)xmalloc_size((size_t)n, sizeof(*M));
     if (M == NULL) return NULL;
     for (i = 0; i < n; i += 1) {
-        M[i] = (double *)calloc((size_t)m, sizeof(**M));
+        M[i] = (double *)xcalloc_size((size_t)m, sizeof(**M));
         if (M[i] == NULL) {
             for (r = 0; r < i; r += 1) free(M[r]);
             free(M);
@@ -206,14 +221,12 @@ void free_vectors(struct vector *head) {
     }
 }
 
-/* Return 1 if path ends with ".txt" (case-insensitive). */
+/* Return 1 if path ends with ".txt" (case-sensitive; only ".txt" accepted). */
 static int has_txt_extension(const char *path) {
     const char *dot = strrchr(path, '.');
-    return dot &&
-           tolower((unsigned char)dot[1]) == 't' &&
-           tolower((unsigned char)dot[2]) == 'x' &&
-           tolower((unsigned char)dot[3]) == 't' &&
-           dot[4] == '\0';
+    if (!dot) return 0;          /* no dot at all */
+    if (dot == path) return 0;   /* filename starts with '.' and nothing before */
+    return (dot[1] == 't' && dot[2] == 'x' && dot[3] == 't' && dot[4] == '\0');
 }
 
 /* Return 1 if a line has only whitespace. */
@@ -245,7 +258,7 @@ static int parse_txt_row(const char *line_in, double **out_row, int m) {
     line = my_strdup(line_in);
     if (line == NULL) return -1;
 
-    *out_row = (double *)malloc(m * sizeof(**out_row));
+    *out_row = (double *)xmalloc_size((size_t)m, sizeof(**out_row));
     if (*out_row == NULL) { free(line); return -1; }
 
     tok = strtok(line, ",\r\n");
@@ -277,9 +290,21 @@ static int parse_txt_row(const char *line_in, double **out_row, int m) {
 /* Grow matrix capacity when needed, keeping M and cap up to date. */
 static int grow_matrix(double ***M, int *cap) {
     double **tmp;
+    int old;
+
+    old = *cap;
+
+    /* prevent overflow: (*cap * sizeof(*tmp)) * 2 */
+    if ((size_t)(*cap) > SIZE_MAX / (2 * sizeof(*tmp))) {
+        return -1;
+    }
+
     *cap *= 2;
-    tmp = (double **)realloc(*M, (size_t)(*cap) * sizeof(*tmp));  
-    if (tmp == NULL) return -1;
+    tmp = (double **)realloc(*M, (size_t)(*cap) * sizeof(*tmp));
+    if (tmp == NULL) { 
+        *cap = old; 
+        return -1;
+    }
     *M = tmp;
     return 0;
 }
@@ -293,7 +318,11 @@ static int ensure_capacity(char **buf, size_t *cap, size_t need) {
 
     new_cap = (*cap == 0) ? 512 : *cap;
     while (new_cap < need) {
-        if (new_cap > (size_t)(~0u) / 2) { new_cap = need; break; }
+        if (new_cap > SIZE_MAX / 2) { /* doubling would overflow */
+            new_cap = need;           /* jump straight to need */
+            if (new_cap < *cap) return -1;
+            break;
+        }
         new_cap *= 2;
     }
 
@@ -334,7 +363,7 @@ static char *readline_dynamic(FILE *f) {
 /* Read txt into matrix M, setting n and m. 0 on success, -1 on failure. */
 static int read_txt(const char *path, double ***out_M, int *out_n, int *out_m) {
     FILE *f;
-    int cap, n, m,cols;
+    int cap, n, m, cols;
     double **M;
     char *line;
     if (!has_txt_extension(path)) return -1;
@@ -343,7 +372,7 @@ static int read_txt(const char *path, double ***out_M, int *out_n, int *out_m) {
     f = fopen(path, "r");
     if (f == NULL) return -1;
 
-    M = (double **)malloc(cap * sizeof(*M));
+    M = (double **)xmalloc_size((size_t)cap, sizeof(*M));
     if (M == NULL) { fclose(f); return -1; }
 
     while ((line = readline_dynamic(f)) != NULL) {
@@ -353,7 +382,7 @@ static int read_txt(const char *path, double ***out_M, int *out_n, int *out_m) {
         cols = count_txt_columns(line);
         if (m < 0) {
             m = cols;
-        }else if (cols != m){
+        } else if (cols != m) {
             free(line); free_matrix(M, n); fclose(f); return -1;}
         
         if (parse_txt_row(line, &M[n], m) != 0) {
@@ -402,10 +431,13 @@ static void print_rows(struct cord **rows, int n, int m) {
 static double **alloc_square(int n, int clear) {
     int i ,r;
     double **M;
-    M = (double **)malloc(n * sizeof(*M));
+
+    M = (double **)xmalloc_size((size_t)n, sizeof(*M));
     if (M == NULL) return NULL;
+
     for (i = 0; i < n; i += 1) {
-        M[i] = clear ? (double *)calloc((size_t)n, sizeof(**M)) : (double *)malloc(n * sizeof(**M));
+        M[i] = clear ? (double *)xcalloc_size((size_t)n, sizeof(**M))
+                     : (double *)xmalloc_size((size_t)n, sizeof(**M));
         if (M[i] == NULL) {
             for (r = 0; r < i; r += 1) free(M[r]);
             free(M);
@@ -459,7 +491,7 @@ static double *degrees_from_A(double **A, int n) {
     int i, j;
     double *deg;
     double s;
-    deg = (double *)calloc((size_t)n, sizeof(*deg));
+    deg = (double *)xcalloc_size((size_t)n, sizeof(*deg));
     if (deg == NULL) return NULL;
     for (i = 0; i < n; i += 1) {
         s = 0.0;
@@ -487,7 +519,7 @@ static double **build_A_from_vectors(struct vector *data_rows, int *out_n) {
     double **Amat;
 
     n = vectors_len(data_rows);
-    Arows = (struct cord **)calloc((size_t)n, sizeof(*Arows));
+    Arows = (struct cord **)xcalloc_size((size_t)n, sizeof(*Arows));
     if (Arows == NULL) return NULL;
     symnmf_sym(Arows, data_rows);
     Avec = rows_to_vector(Arows, n);
@@ -750,7 +782,7 @@ static void run_goal_and_print(const char *goal, struct vector *X_vecs, int n) {
     int i;
     struct cord **rows;
     if (strcmp(goal, "symnmf") == 0) die();
-    rows = (struct cord **)calloc((size_t)n, sizeof(*rows));
+    rows = (struct cord **)xcalloc_size((size_t)n, sizeof(*rows));
     if (rows == NULL) die();
     if (strcmp(goal, "sym") == 0) symnmf_sym(rows, X_vecs);
     else if (strcmp(goal, "ddg") == 0) symnmf_ddg(rows, X_vecs);
