@@ -32,7 +32,10 @@ static void *xcalloc_size(size_t count, size_t elem) {
 int cords_len(struct cord *c) {
     int len;
     len = 0;
-    while (c != NULL) { len += 1; c = c->next; }
+    while (c != NULL) { 
+        len += 1;
+        c = c->next; 
+     }
     return len;
 }
 
